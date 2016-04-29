@@ -7,5 +7,8 @@ addons:
     packages:
     - texlive-full
 
+before_install:
+  - mkdir -p ~/texmf/tex/latex; cd ~/texmf/tex/latex; curl -O http://mirrors.ctan.org/macros/latex/contrib/todonotes.zip; unzip todonotes
+
 script: make travis
 
