@@ -3,6 +3,10 @@ MAIN=main
 pdf:
 	latexmk -pdf $(MAIN) -auxdir=output -outdir=output
 
+travis:
+	#Old latexmk doesn't understand auxdir and outdir options
+	latexmk -pdf -pdflatex='pdflatex %O -interaction=nonstopmode -halt-on-error' $(MAIN)
+
 arxiv: pdf
 	mkdir -p arxiv
 	cp *.pdf output/*.bbl paper.tex *.cls *.bst arxiv
