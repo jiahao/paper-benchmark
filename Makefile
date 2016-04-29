@@ -5,7 +5,7 @@ pdf:
 
 travis:
 	#Old latexmk doesn't understand auxdir and outdir options
-	latexmk -pdf -pdflatex='pdflatex %O -interaction=nonstopmode -halt-on-error' $(MAIN)
+	latexmk -pdf -pdflatex='pdflatex %S %O -interaction=nonstopmode -halt-on-error' $(MAIN)
 
 arxiv: pdf
 	mkdir -p arxiv
