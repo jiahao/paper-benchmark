@@ -15,4 +15,5 @@ output/*
 include.tex
 paper.dvi
 paper.pdf
+main.pdf
 auto/
