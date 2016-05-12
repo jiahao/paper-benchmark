@@ -56,6 +56,10 @@ suite[:sqralloc]        = @benchmarkable sqralloc(10)
 suite[:sumindex, :hit]  = @benchmarkable sumindex($arr, $linear_inds)
 suite[:sumindex, :miss] = @benchmarkable sumindex($arr, $rand_inds)
 
-# tune!(suite)
-# JLD.save("params.jld", "suite", params(suite))
 loadparams!(suite, JLD.load("params.jld", "suite"), :evals)
+
+##############
+# Experiment #
+##############
+
+experiment(g, s, n) = [run(g, samples=s, evals = i, seconds=Inf) for i in 1:n]
