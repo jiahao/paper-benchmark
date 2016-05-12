@@ -62,12 +62,12 @@ loadparams!(suite, JLD.load("params.jld", "suite"), :evals)
 # Experiment #
 ##############
 
-function experiment(group, s, n)
+function experiment(group, s, ns)
     result = BenchmarkGroup()
     for (id, bench) in group
-        result[id] = BenchmarkTools.Trial[run(bench, samples = s, evals = i, seconds=1200) for i in 1:n]
+        result[id] = BenchmarkTools.Trial[run(bench, samples = s, evals = n, seconds=1200) for n in ns]
     end
     return result
 end
 
-# JLD.save("results/results.jld", "suite", experiment(suite, 1000, 1000));
+# JLD.save("results/results.jld", "suite", experiment(suite, 1000, [1, 50:50:1000...]));
