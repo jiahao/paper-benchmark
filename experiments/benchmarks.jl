@@ -47,7 +47,7 @@ sqralloc(n) = [rand(i) for i in 1:n]
 const suite = BenchmarkGroup()
 const seed = MersenneTwister(1)
 const arr = rand(deepcopy(seed), 1000)
-const linear_inds = 1:length(arr)
+const linear_inds = collect(1:length(arr))
 const rand_inds = rand(deepcopy(seed), linear_inds, length(arr))
 
 suite[:pushall!]        = @benchmarkable pushall!(x, $arr) setup=(x = Float64[])
