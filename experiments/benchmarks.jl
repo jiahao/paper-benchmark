@@ -63,3 +63,5 @@ loadparams!(suite, JLD.load("params.jld", "suite"), :evals)
 ##############
 
 experiment(g, s, n) = [run(g, samples=s, evals = i, seconds=Inf) for i in 1:n]
+
+# JLD.save("results/results.jld", "suite", experiment(suite, 1000, 1000));
