@@ -58,4 +58,4 @@ suite[:sumindex, :miss] = @benchmarkable sumindex($arr, $rand_inds)
 
 # tune!(suite)
 # JLD.save("params.jld", "suite", params(suite))
-# loadparams!(suite, JLD.load("params.jld", "suite"), :evals)
+loadparams!(suite, JLD.load("params.jld", "suite"), :evals)
