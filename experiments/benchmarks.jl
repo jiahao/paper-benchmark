@@ -56,7 +56,7 @@ suite[:sqralloc]        = @benchmarkable sqralloc(10)
 suite[:sumindex, :hit]  = @benchmarkable sumindex($arr, $linear_inds)
 suite[:sumindex, :miss] = @benchmarkable sumindex($arr, $rand_inds)
 
-loadparams!(suite, JLD.load("params.jld", "suite"), :evals)
+# loadparams!(suite, JLD.load("params.jld", "suite"), :evals)
 
 ##############
 # Experiment #
@@ -70,4 +70,4 @@ function experiment(group, s, ns)
     return result
 end
 
-# JLD.save("results/results.jld", "suite", experiment(suite, 1000, [1, 50:50:1000...]));
+# JLD.save("results/results.jld", "suite", experiment(suite, 1000, 1:1000));
