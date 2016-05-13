@@ -71,11 +71,48 @@ function evals_experiment(group, s, ns)
 end
 
 # julia> JLD.save("results/repeat_results.jld", "suite", repeat_experiment(suite, 100));
+#  (1/6) benchmarking :noisy_scalar...
+#  done (took 1.412297008 seconds)
+#  (2/6) benchmarking :pushall!...
+#  done (took 0.467905166 seconds)
+#  (3/6) benchmarking (:sumindex,:miss)...
+#  done (took 0.561127866 seconds)
+#  (4/6) benchmarking :sqralloc...
+#  done (took 1.377793755 seconds)
+#  (5/6) benchmarking (:sumindex,:hit)...
+#  done (took 0.562570577 seconds)
+#  (6/6) benchmarking :branchsum...
+#  done (took 0.834586241 seconds)
+#  (1/6) benchmarking :noisy_scalar...
+#  done (took 1.413318973 seconds)
+#  (2/6) benchmarking :pushall!...
+#  done (took 0.471280875 seconds)
+#  (3/6) benchmarking (:sumindex,:miss)...
+#  done (took 0.560402967 seconds)
+#  (4/6) benchmarking :sqralloc...
+#  done (took 1.378909317 seconds)
+#  (5/6) benchmarking (:sumindex,:hit)...
+#  done (took 0.562292214 seconds)
+#  (6/6) benchmarking :branchsum...
+#  done (took 0.832725015 seconds)
 function repeat_experiment(group, reps)
     tune!(group)
-    result = Vector{BenchmarkGroup}(reps)
+    results = Vector{BenchmarkGroup}(reps)
     for i in 1:reps
-        result[i] = run(group; verbose = true)
+        results[i] = run(group; verbose = true)
     end
-    return result
+    return flatten_repeat_results(keys(group), results)
+end
+
+function flatten_repeat_results(keys, results)
+    group = BenchmarkGroup()
+    reps = length(results)
+    for k in keys
+        trials = Vector{BenchmarkTools.Trial}(reps)
+        group[k] = trials
+        for i in 1:reps
+            trials[i] = results[i][k]
+        end
+    end
+    return group
 end

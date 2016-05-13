@@ -7,9 +7,11 @@ using JLD
 # https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/plotting.jl
 BenchmarkTools.loadplotting()
 
-const group = JLD.load("results/results.jld", "suite");
+const evals_group = JLD.load("results/evals_results.jld", "suite");
+const repeat_group = JLD.load("results/repeat_results.jld", "suite");
+const repeat2_group = JLD.load("results/repeat_results2.jld", "suite");
 
-function scankdes(trials::Array, delay = 3; kwargs...)
+function scankdes(trials::Array, delay = 0.001; kwargs...)
     for i in 1:length(trials)
         plotkde(trials[i]; kwargs...)
         @show i

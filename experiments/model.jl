@@ -29,20 +29,56 @@ function d(n, t, r)
     end
 end
 
-###########################
-# Estimator distributions #
-###########################
+#####################################
+# Estimator distributions and tests #
+#####################################
 
-function mindist(src; trials = 10000, comps = 10000)
-    diff = zeros(comps)
-    for c in 1:comps
-        x = Inf
-        y = Inf
-        for _ in 1:trials
-            x = min(x, rand(src))
-            y = min(y, rand(src))
+function diffmintest(src1, src2; trials = 1000)
+    @assert length(src1) == length(src2)
+    samples = length(src1)
+    diff = zeros(trials)
+    for t in 1:trials
+        x1 = Inf
+        x2 = Inf
+        for _ in 1:samples
+            x1 = min(x1, rand(src1))
+            x2 = min(x2, rand(src2))
         end
-        diff[c] = x - y
+        diff[t] = x1 - x2
     end
-    return diff
+    return sort!(diff)
+end
+
+function diffmedtest(src1, src2; trials = 1000)
+    @assert length(src1) == length(src2)
+    samples = length(src1)
+    diff = zeros(trials)
+    for t in 1:trials
+        diff[t] = median(rand(src1, samples)) - median(rand(src2, samples))
+    end
+    return sort!(diff)
+end
+
+pairdiff(x1, x2) = vec([i - j for i in x1, j in x2])
+
+function distmin(src; trials = 1000)
+    samples = length(src)
+    result = zeros(trials)
+    for t in 1:trials
+        x = Inf
+        for _ in 1:samples
+            x = min(x, rand(src))
+        end
+        result[t] = x
+    end
+    return sort!(result)
+end
+
+function distmed(src; trials = 1000)
+    samples = length(src)
+    result = zeros(trials)
+    for t in 1:trials
+        result[t] = median(rand(src, samples))
+    end
+    return sort!(result)
 end
