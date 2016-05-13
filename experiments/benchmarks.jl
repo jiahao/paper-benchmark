@@ -55,14 +55,14 @@ suite[:branchsum]       = @benchmarkable branchsum(50)
 suite[:sqralloc]        = @benchmarkable sqralloc(10)
 suite[:sumindex, :hit]  = @benchmarkable sumindex($arr, $linear_inds)
 suite[:sumindex, :miss] = @benchmarkable sumindex($arr, $rand_inds)
-
-# loadparams!(suite, JLD.load("params.jld", "suite"), :evals)
+suite[:noisy_scalar]    = @benchmarkable $(one(Complex{BigInt})) / $(one(BigFloat))
 
 ##############
 # Experiment #
 ##############
 
-function experiment(group, s, ns)
+# julia> JLD.save("results/evals_results.jld", "suite", evals_experiment(suite, 1000, 1:1000));
+function evals_experiment(group, s, ns)
     result = BenchmarkGroup()
     for (id, bench) in group
         result[id] = BenchmarkTools.Trial[run(bench, samples = s, evals = n, seconds=1200) for n in ns]
@@ -70,4 +70,12 @@ function experiment(group, s, ns)
     return result
 end
 
-# JLD.save("results/results.jld", "suite", experiment(suite, 1000, 1:1000));
+# julia> JLD.save("results/repeat_results.jld", "suite", repeat_experiment(suite, 100));
+function repeat_experiment(group, reps)
+    tune!(group)
+    result = Vector{BenchmarkGroup}(reps)
+    for i in 1:reps
+        result[i] = run(group; verbose = true)
+    end
+    return result
+end
