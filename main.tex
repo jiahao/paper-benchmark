@@ -54,8 +54,24 @@ hood that can screw up the comparison~\cite{HP5e}.
 
 \TODO{jrevels to fill in}
 
+
+\subsection{Quiescence}
+
+There is a lot of work trying to make the system more reliable, reducing variation. Some examples are \TODO{MORE} . But in practice it is still impossible to eliminate every single source of jitter. In these cases where there is irreducible jitter we have no choice but to resort to a statistical description of the benchmarking process.
+
+
+\section{Methodology}
+
+\subsection{A compromise between timer accuracy and jitter determines how many times to run the benchmark}
+
+For benchmarks that take very little time to run, it is vital to run it many times so that you avoid measurement error coming from finite timer accuracy. We distinguish between precision and accuracy here: just because the system may provide a timer with nanosecond precision does not automatically guarantee that it has nanosecond \textit{accuracy}. In principle we can calibrate the timer for a given system to measure its accuracy. In practice, we simply assume a given accuracy, say 1 microsecond, and proceed accordingly.
+
+A common rule of thumb used in practice is to repeat the benchmark enough times so that the total execution time exceeds a certain minimum period, say 5--20 seconds. The relative accuracy of assessing the actual run time is increased. A useful analogy is how you can get a more precise measurement of the weight of a single sheet of paper if you weigh 500 sheets on scale and divide the measurement by 500, as opposed to weighing just a single sheet directly.
+
+Nominally it looks like the accuracy of this 
+
 \label{sec:statmodel}
-\section{A simple statistical model for nondeterministic execution times in the presence of OS jitter}
+\subsection{A simple statistical model for nondeterministic execution times in the presence of OS jitter}
 
 In this work we adopt a simple model for program execution. Assume for the moment that we have only a single instruction pipeline and that the user's program $P_0$ may be specified as a single sequence of instructions, which we shall denote
 
