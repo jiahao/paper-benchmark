@@ -4,8 +4,7 @@
 %XXX Remove before final submission
 \usepackage{todonotes}
 \usepackage{cite}
-%\usepackage{amsmath}
-%
+\usepackage{amsmath}
 % Note that the amsmath package sets \interdisplaylinepenalty to 10000
 % thus preventing page breaks from occurring within multiline equations. Use:
 %\interdisplaylinepenalty=2500
@@ -56,7 +55,87 @@ hood that can screw up the comparison~\cite{HP5e}.
 \TODO{jrevels to fill in}
 
 \label{sec:statmodel}
-\section{A simple statistical model}
+\section{A simple statistical model for nondeterministic execution times in the presence of OS jitter}
+
+In this work we adopt a simple model for program execution. Assume for the moment that we have only a single instruction pipeline and that the user's program $P_0$ may be specified as a single sequence of instructions, which we shall denote
+
+$P_0$ = \begin{tabular}{|c|c|c|c|c|}
+\hline
+$I_1$ & $I_2$ & $\cdots$ & $I_N$ \tabularnewline
+\hline
+\end{tabular}
+
+Assume that each instruction $I_i$ takes exactly one clock cycle. In an idealized universe, the user program $P_0$ will execute in time $T_0 = N$ clock cycles. However, due to any of the external factors mentioned above, the CPU or operating system may choose to do things other than one of the instructions $I_k$. We model this by saying that the idealized program $P_0$ is transformed into a new program $P$, which consists of the same sequence of instructions  from the user's program $P_0$, but interleaved with delay instructions $D_j$:
+
+$P$ = \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|}
+\hline
+$D_1$ & $I_1$ & $D_2$ & $I_2$ &
+$\cdots$ & $D_N$ & $I_N$ & $D_{N+1}$
+\tabularnewline
+\hline
+\end{tabular}
+
+The delay instructions model branching to instructions that do not belong to $P_0$, but are nevertheless run because they are triggered by the environment of $P_0$, such as its operating system or hardware state, or even a network interrupt. The run time of $P$ is no longer $N$, but
+$T_P = N + \sum_{j=1}^{N+1} D_j$.
+
+Further imagine that this machine has $N_f$ independent factors of OS (environmental) jitter, which we label in superscripts $\cdot^{(i)}$. Each jitter factor can trigger with probability $p^{(i)}$, and each time the jitter factor is triggered, it will take time $T^{(i)}$ to run. Let $x^{i}_j \in \{0, 1\}$ indicate whether the $i$th jitter factor is triggered each time in the random delay instruction $R_j$. Then the run time of $D_j$ is
+$T_{D_j} = \sum_{i=1}^{N_f} x^{(i)}_j T^{(i)}$ and is no longer deterministic, but instead a random variable.
+
+Putting all these things together, we get
+
+\begin{equation}
+T_P = N + \sum_{j=1}^{N+1} \sum_{i=1}^{N_f} x^{(i)}_j T^{(i)}
+= N + \sum_{i=1}^{N_f} X_P^{(i)} T^{(i)},
+\end{equation}
+%
+where $X_P^{(i)} = \sum_{j=1}^{N+1} x^{(i)}_j$ is the number of times the jitter factor $i$ was triggered when running the program $P$.
+
+The randomness has a natural interpretation in the Kolmogorov formulation of probability. We could in principle gather so much information about the exact microscopic configuration $\mathcal S$ of a computer, down to its precise hardware specification, operating temperature, and all the bits in its I/O streams, caches, buffers, and storage devices, and so on, that we could know deterministically how long each delay instruction $D_j$ would take to run. If we could also restore the computer to the precise state $\mathcal S$ after running the program $P$, then the computer will execute $P$ again with exactly the same, deterministic run time. In practice, however, we never know $\mathcal S$ with enough detail to describe $T_P$ deterministically. Instead, we must make do with an imprecise specification of the machine state, saying instead that the machine state $\mathcal S$ is only known to belong to some set $S$ of possible machine states belonging to the sample space $\Omega$. In this sense, our probabilistic description of program execution is reminiscent of the microcanonical ensemble in statistical mechanics.
+
+Let's note a few properties of this model:
+
+First of all, $T_P \ge T_0$ since each characteristic time $T^{(i)} > 0$ is positive. Therefore $P$ always takes more time to execute than $P_0$. More importantly, there must exist some critical time $T^*_P$ for which the probability density function (pdf) $f_P(t)$ of $T_P$ of obeys $f_P(t) = 0 \; \forall \; t < T^*_P$. The critical time $T^*_P \ge T_0$, with equality holding if and only if there exists some microscopic configuration $\mathcal S$ such that no factors of OS jitter are triggered, i.e.\ $x^{(i)}_j = 0$ for all factors $i$ and instructions $j$.
+
+Secondly, there are special case limiting behaviors that make a lot of sense. For example, if there is only $N_f = 1$ factor of OS jitter, then $X^{(1)}$ follows a binomial distribution with $N$ samples and proability $p^{(1)}$. If furthermore the number of instructions $N$ is sufficiently large, then and there is only $N_f = 1$ factor of OS jitter, then the behavior of $X^{(1)}$ follows a Poisson (exponential) distribution with rate $p^{(1)} N$. If there are $N_f > 1$ factors of OS jitter, each with identical trigger probability $p^{(i)} = \pi$ and characteristic time scale $T^(i) = \tau$, then $X = \sum_{i=1}^{N_f} X^{(i)}$ follows an Erlang distribution with shape parameter $k$ and rate $p^{(1)} N$. Of course in practice, few benchmarks obey such idealized behavior, but they are useful limiting cases to bear in mind. Furthermore our model is general enough to cover the wide variety of distributions seen in practice. An important nonideal case is the observation of two or more modes in $f_P$. Such behavior is consistent with a model $T_P = T_Y Y + T_Z Z$, where $T_Y$ and $T_Z \ne T_Y$ are constants describing a characteristic time scales associated with random variables $Y$ and $Z$ respectively, and $Y$ is an Erlang distribution and $Z$ is a binomial distribution.
+
+
+\subsection{A hypothesis testing approach to regression testing}
+
+We are now ready to make use of all this probablisitic machinery to describe the statistics of regression benchmarking. Suppose we have a reference program $P$ and a modified program $Q$ which produce the same output when given identical inputs. We now want to know if $P$ is slower than $Q$. Again in a perfectly deterministic universe where there are no OS jitter factors or the starting machine state $\mathcal S$ known with great precision and can be reproduced on demand, then we simply run $P$, time how long it takes, reset the machine back to its starting state $\mathcal S$, and then run $Q$, noting how long it takes to run. However $\mathcal S$ is never known exactly, and even if it were known, it's not clear if
+$\mathcal S$ represents a ``typical'' machine configuration encountered in practice.
+
+We are thus inexorably led to consider instead the statistical question of whether
+
+\begin{equation}
+\Delta T = T_Q - T_P
+= (T^*_P - T^*_Q) + \sum_{i=1}^{N_f} (X^{(i)}_P - X^{(i)}_Q) T^{(i)}
+\end{equation}
+%
+is statistically positive.
+
+What we need to do now is to distinguish the constant factor $T^*_P - T^*_Q$, the part we care about, from the second term, representing differences in OS jitter triggers.
+
+\TODO{... SKIP SOME STEPS ...}
+
+Let $l_P$ and $l_Q$ be location parameters, such as the means, medians, minima, or interquartile ranges that characterize $f_P$ and $f_Q$. Then we can write down a hypothesis test
+
+\begin{subequations}
+\begin{align}
+H_0&: l_P = l_Q \\
+H_1&: l_P < l_Q
+\end{align}
+\end{subequations}
+
+If $H_1$ is true, then we have a performance regression if program $Q$ replaces program $P$.
+
+There is a question of what location parameter to use.
+One may want to use the means, but as we all know the means are sensitive to large outliers. We see large outliers in the benchmark data, which happens when some OS jitter factor with a very long delay is triggered. Quantile-based measures such as the mean and minimum are sensitive to non-stationary OS jitter, for example if there is some jitter factor $i$ such that $X^{(i)}_P = 1$ while $X^{(i)}_Q = 0$ determistically. There is a fundamental definition problem in this situation. If we acknowledge that factor $i$ is always triggered once every time program $P$ runs but not in $Q$, then we could could fold the contribution of factor $i$ into the definition of $T^*_P$, recognizing that it is not possible to run $P$ without triggering factor $i$. However, it is impossible to distinguish statistically between this case and non-stationary jitter, i.e.\ jitter that changes the machine's behavior for a time period longer than, say, the combined run times of $P$ and $Q$. For example, the OS may decide to start paging virtual memory to disk halfway through running $P$, which continues all throughout the time when the user runs $Q$. Another possibility is that the machine running the benchmark encounters an unusally high level of network traffic when running $P$ and $Q$, for example if the machine is suffering a DDoS attack. The only way to detect this kind of nonstationary noise is to run $P$ and $Q$ enough times so that the combined run time exceeds the characteristic time scale for this jitter. However, in practice this may require benchmarks to run for unacceptably long times.
+
+Therefore our current recommendation is to use an inter-quantile range as the location parameter. It is easy to calculate the estimators $\hat l_P$ and $\hat l_Q$. However, we don't know analytically what the distribution of $l_P - l_Q$ looks like, which we need to know in order to describe the appropriate time scale $\tau$ to describe statistical significance. (This time scale generalizes the standard error of the $t$-statistic when comparing the means of two Gaussians.) So we use a bootstrap procedure to estimate this scale $\tau$~\cite{Efron1981}.
+
+\subsection{A bootstrap procedure for hypothesis testing}
+
+The thing we don't know h
 
 \TODO{jiahao to fill in}
 
@@ -129,4 +208,3 @@ This work was supported by the Nanosoldier grant.\TODO{Get grant info}
 
 % that's all folks
 \end{document}
-
