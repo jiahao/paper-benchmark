@@ -8,8 +8,7 @@ using JLD
 BenchmarkTools.loadplotting()
 
 const evals_group = JLD.load("results/evals_results.jld", "suite");
-const repeat_group = JLD.load("results/repeat_results.jld", "suite");
-const repeat2_group = JLD.load("results/repeat_results2.jld", "suite");
+const group = JLD.load("results/results.jld", "suite");
 
 function scankdes(trials::Array, delay = 0.001; kwargs...)
     for i in 1:length(trials)

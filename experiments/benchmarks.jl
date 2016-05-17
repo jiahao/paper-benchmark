@@ -7,14 +7,48 @@ using JLD
 
 # periodic copy + reallocation
 function pushall!(collection, items)
+    x = 0.0
+    for item in items
+        x = rand()
+        push!(collection, item)
+    end
+    return collection
+end
+
+function pushall_fast!(collection, items)
     for item in items
         push!(collection, item)
     end
     return collection
 end
 
+function pushall_slow!(collection, items)
+    x, y = 0.0, 0.0
+    for item in items
+        x, y = rand(), rand()
+        push!(collection, item)
+    end
+    return collection
+end
+
 # recursion, uneven branching, no allocation
+# Note: The fact that these branchsum functions perform drastically differently is somewhat
+# distressing, and probably points to an actual Julia performance bug.
 function branchsum(n)
+    x = 1
+    for i in 1:n
+        if iseven(i)
+            x += -1
+        else
+            for i in 1:n
+                x += ifelse(iseven(i), -1, 1)
+            end
+        end
+    end
+    return x
+end
+
+function branchsum_fast(n)
     x = 1
     if isodd(n)
         for i in 1:n
@@ -22,14 +56,37 @@ function branchsum(n)
         end
     else
         for i in 1:n
-            x += iseven(i) ? -1 : branchsum(i)
+            x += iseven(i) ? -1 : branchsum_fast(i)
+        end
+    end
+    return x
+end
+
+
+function branchsum_slow(n)
+    x = 1
+    if isodd(n)
+        for i in 1:n
+            if iseven(i)
+                x += -1
+            else
+                x += 1
+            end
+        end
+    else
+        for i in 1:n
+            if iseven(i)
+                x += -1
+            else
+                x += branchsum_slow(i)
+            end
         end
     end
     return x
 end
 
 # inds can be changed to test cache effects
-function sumindex(A, inds)
+function sumindex_core(A, inds)
     s = zero(eltype(A))
     for i in inds
         s += A[i]
@@ -37,25 +94,52 @@ function sumindex(A, inds)
     return s
 end
 
+sumindex(A) = sumindex_core(A, collect(1:length(A)))
+sumindex_fast(A) = sumindex_core(A, 1:length(A))
+sumindex_slow(A) = sumindex_core(A, collect(length(A):-1:1))
+
 # frequent reallocations of varying size
-sqralloc(n) = [rand(i) for i in 1:n]
+manyallocs(n) = [collect(1:rand(MersenneTwister(1), 1:n)) for i in 1:n]
+
+function manyallocs_fast(n)
+    m = rand(MersenneTwister(1), 1:n)
+    return [collect(1:m) for i in 1:n]
+end
+
+function manyallocs_slow(n)
+    x = Any[]
+    for i in 1:n
+        y = Any[]
+        for j in 1:rand(MersenneTwister(1), 1:n)
+            push!(y, j)
+        end
+        push!(x, deepcopy(y))
+    end
+    return x
+end
 
 ###################
 # Benchmark Suite #
 ###################
 
 const suite = BenchmarkGroup()
-const seed = MersenneTwister(1)
-const arr = rand(deepcopy(seed), 1000)
-const linear_inds = collect(1:length(arr))
-const rand_inds = rand(deepcopy(seed), linear_inds, length(arr))
+const A = rand(MersenneTwister(1), 100)
 
-suite[:pushall!]        = @benchmarkable pushall!(x, $arr) setup=(x = Float64[])
-suite[:branchsum]       = @benchmarkable branchsum(50)
-suite[:sqralloc]        = @benchmarkable sqralloc(10)
-suite[:sumindex, :hit]  = @benchmarkable sumindex($arr, $linear_inds)
-suite[:sumindex, :miss] = @benchmarkable sumindex($arr, $rand_inds)
-suite[:noisy_scalar]    = @benchmarkable $(one(Complex{BigInt})) / $(one(BigFloat))
+suite[:pushall!]      = @benchmarkable pushall!(Float64[], $A) evals=16
+suite[:pushall_fast!] = @benchmarkable pushall_fast!(Float64[], $A) evals=10
+suite[:pushall_slow!] = @benchmarkable pushall_slow!(Float64[], $A) evals=165
+
+suite[:branchsum]      = @benchmarkable branchsum(50) evals=190
+suite[:branchsum_fast] = @benchmarkable branchsum_fast(50) evals=200
+suite[:branchsum_slow] = @benchmarkable branchsum_slow(50) evals=107
+
+suite[:sumindex]      = @benchmarkable sumindex($A) evals=460
+suite[:sumindex_fast] = @benchmarkable sumindex_fast($A) evals=947
+suite[:sumindex_slow] = @benchmarkable sumindex_slow($A) evals=310
+
+suite[:manyallocs]      = @benchmarkable manyallocs(10) evals=1
+suite[:manyallocs_fast] = @benchmarkable manyallocs_fast(10) evals=1
+suite[:manyallocs_slow] = @benchmarkable manyallocs_slow(10) evals=1
 
 ##############
 # Experiment #
@@ -70,33 +154,8 @@ function evals_experiment(group, s, ns)
     return result
 end
 
-# julia> JLD.save("results/repeat_results.jld", "suite", repeat_experiment(suite, 100));
-#  (1/6) benchmarking :noisy_scalar...
-#  done (took 1.412297008 seconds)
-#  (2/6) benchmarking :pushall!...
-#  done (took 0.467905166 seconds)
-#  (3/6) benchmarking (:sumindex,:miss)...
-#  done (took 0.561127866 seconds)
-#  (4/6) benchmarking :sqralloc...
-#  done (took 1.377793755 seconds)
-#  (5/6) benchmarking (:sumindex,:hit)...
-#  done (took 0.562570577 seconds)
-#  (6/6) benchmarking :branchsum...
-#  done (took 0.834586241 seconds)
-#  (1/6) benchmarking :noisy_scalar...
-#  done (took 1.413318973 seconds)
-#  (2/6) benchmarking :pushall!...
-#  done (took 0.471280875 seconds)
-#  (3/6) benchmarking (:sumindex,:miss)...
-#  done (took 0.560402967 seconds)
-#  (4/6) benchmarking :sqralloc...
-#  done (took 1.378909317 seconds)
-#  (5/6) benchmarking (:sumindex,:hit)...
-#  done (took 0.562292214 seconds)
-#  (6/6) benchmarking :branchsum...
-#  done (took 0.832725015 seconds)
+# julia> JLD.save("results/new_results.jld", "suite", repeat_experiment(suite, 100));
 function repeat_experiment(group, reps)
-    tune!(group)
     results = Vector{BenchmarkGroup}(reps)
     for i in 1:reps
         results[i] = run(group; verbose = true)
