@@ -3,8 +3,10 @@
 
 %XXX Remove before final submission
 \usepackage{todonotes}
+
 \usepackage{cite}
 \usepackage{amsmath}
+\usepackage{subcaption}
 % Note that the amsmath package sets \interdisplaylinepenalty to 10000
 % thus preventing page breaks from occurring within multiline equations. Use:
 %\interdisplaylinepenalty=2500
@@ -59,6 +61,40 @@ And then there is environmental factors such as network traffic that may lead to
 further variation. We call all these factors jitter.
 Jitter complicates the accurate and reproducible timing of programs, which we
 need so that we can say that ``this change made my program run faster or slower''.
+
+Figure~\ref{fig:examplebenchmarks} illustrates some of the many behaviors exhibited by benchmark codes.
+
+\begin{figure}
+\centering
+
+\begin{subfigure}{0.22\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
+    \caption{TODO Simple variation}
+\end{subfigure}%
+~
+\begin{subfigure}{0.22\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
+    \caption{Bimodal distribution}
+\end{subfigure}
+
+\begin{subfigure}{0.22\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_sqralloc}
+    \caption{Systematic drift}
+\end{subfigure}
+~
+\begin{subfigure}{0.22\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_sqralloc}
+    \caption{TODO More crazy?}
+\end{subfigure}
+
+%\includegraphics[width=2.5in]{myfigure}
+\caption{Some typical variations in benchmark timings.}
+\label{fig:examplebenchmarks}
+\end{figure}
 
 There is a lot of work on machine quiescence, to reduce variation in the performance
 behavior of CPUS. Relevant work exists to
@@ -210,13 +246,6 @@ Therefore our current recommendation is to use an inter-quantile range as the lo
 
 \TODO{jiahao to fill in}
 
-\begin{figure}[!t]
-\centering
-\TODOFIG{Ideal benchmark timings}
-%\includegraphics[width=2.5in]{myfigure}
-\caption{How benchmark timings ought to scale with the number of repetitions $n$ according to the statistical model of Sec.~\ref{sec:statmodel}.}
-\label{fig:idealscaling}
-\end{figure}
 
 
 
@@ -226,22 +255,24 @@ We have implemented the stastistical ideas described above in a suite of package
 The code is implemented in Julia. Julia is an emerging programming language designed for technical computing, an area where performance considerations are very important.
 The code is available freely on GitHub under the MIT ``Expat'' License.
 
-\begin{description}
+\begin{itemize}
 
 \item
-[\href{https://github.com/JuliaCI/BenchmarkTools.jl}{BenchmarkTools.jl}]
+\href{https://github.com/JuliaCI/BenchmarkTools.jl}{BenchmarkTools.jl}
 is a Julia package for automated benchmarking and regression testing, implementing the statistical ideas described above for automated regression testing.
 
 \item
-[\href{https://github.com/JuliaCI/BaseBenchmarks.jl}{BaseBenchmarks.jl}]
+\href{https://github.com/JuliaCI/BaseBenchmarks.jl}{BaseBenchmarks.jl}
 is a collection of approximately 2,500 benchmarks which can be used for testing performance regressions in the Julia base library and compiler.
 
 \item
-[\href{https://github.com/JuliaCI/Nanosoldier.jl}{Nanosoldier.jl}]
+\href{https://github.com/JuliaCI/Nanosoldier.jl}{Nanosoldier.jl}
 contains GitHub API hooks that trigger some or all the benchmarks to be run on the Nanosoldier, a dedicated machine at MIT reserved solely for regression testing.
 Julia developers can simply write a suitable comment on issues and pull requests on the Julia repository on GitHub that mention the \href{https://github.com/nanosoldier}{@nanosoldier} GitHub user. The bot underneath runs the regression tests on the Nanosoldier, commits a report to the \href{https://github.com/JuliaCI/BaseBenchmarkReports}{BaseBenchmarkReports} repository, and replies in a follow-up comment with a summary indicating any potential performance regressions detected.
 
-\end{description}
+\end{itemize}
+
+
 
 \section{Results on some Julia benchmarks}
 
@@ -264,37 +295,16 @@ Samples generally appears to follow a Gamma distribution, plus modes at points o
 \label{fig:scaling}
 \end{figure}
 
-% An example of a floating table. Note that, for IEEE style tables, the
-% \caption command should come BEFORE the table and, given that table
-% captions serve much like titles, are usually capitalized except for words
-% such as a, an, and, as, at, but, by, for, in, nor, of, on, or, the, to
-% and up, which are usually not capitalized unless they are the first or
-% last word of the caption. Table text will default to \footnotesize as
-% the IEEE normally uses this smaller font for tables.
-% The \label must come after \caption as always.
-%
-%\begin{table}[!t]
-%% increase table row spacing, adjust to taste
-%\renewcommand{\arraystretch}{1.3}
-% if using array.sty, it might be a good idea to tweak the value of
-% \extrarowheight as needed to properly center the text within the cells
-%\caption{An Example of a Table}
-%\label{table_example}
-%\centering
-%% Some packages, such as MDW tools, offer better commands for making tables
-%% than the plain LaTeX2e tabular which is used here.
-%\begin{tabular}{|c||c|}
-%\hline
-%One & Two\\
-%\hline
-%Three & Four\\
-%\hline
-%\end{tabular}
-%\end{table}
+
+\section{Limitations of our current approach}
+
+
 
 \section{Conclusion}
 
 \TODO{The conclusion goes here.}
+
+
 
 \section*{Acknowledgment}
 
