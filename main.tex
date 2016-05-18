@@ -15,6 +15,23 @@
 \usepackage{url}
 \usepackage{hyperref}
 
+\usepackage{listings}
+
+\lstdefinelanguage{Julia}{
+  basicstyle=\small\ttfamily,
+  showspaces=false,
+  showstringspaces=false,
+  keywordstyle={\textbf},
+  morekeywords={if,else,elseif,while,for,begin,end,quote,try,catch,return,local,abstract,function,stagedfunction,macro,ccall,finally,typealias,break,continue,type,global,module,using,import,export,const,let,bitstype,do,in,baremodule,importall,immutable},
+  escapeinside={~}{~},
+  morecomment=[l]{\#},
+%  commentstyle=\textsf,
+  commentstyle={},
+  morestring=[b]",
+}
+
+\lstset{language=Julia,basicstyle=\footnotesize\ttfamily,breaklines=true}
+
 % correct bad hyphenation here
 \hyphenation{}
 
@@ -114,6 +131,8 @@ In these cases where there is irreducible jitter we have no choice but to resort
 
 In this paper, we present a statistically rigorous approach to performance regression
 testing that is valid in the presence of OS jitter.
+
+\TODO{Summarize https://github.com/JuliaCI/BenchmarkTools.jl/blob/60dfe83e5434c87b7311ca5d9f185f45752ed510/doc/linuxtips.md}
 
 \TODO{portability}
 
@@ -309,7 +328,32 @@ Hypothesis testing based on location measures are sensitive to non-stationary OS
 
 \subsection{Choice of dispersion parameter}
 
-Our current recommendation is to use an inter-quantile range as the location parameter. It is easy to calculate the estimators $\hat d_P$ and $\hat d_Q$. However, we don't know analytically what the distribution of $d_P - d_Q$ looks like, which we need to know in order to describe the appropriate time scale $\tau$ to describe statistical significance. (This time scale generalizes the standard error of the $t$-statistic when comparing the means of two Gaussians.) So we use a bootstrap procedure to estimate this scale $\tau$~\cite{Chernick2008}.
+Our current recommendation is to use an inter-quantile range as the location parameter. It is easy to calculate the estimators $\hat d_P$ and $\hat d_Q$. However, we don't know analytically what the distribution of $d_P - d_Q$ looks like, which we need to know in order to describe the appropriate time scale $\tau$ to describe statistical significance. (This time scale generalizes the standard error of the $t$-statistic when comparing the means of two Gaussians.) So we use a bootstrap procedure to estimate this scale $\tau$~\cite{Chernick2008}. The Julia code for the bootstrapping procedure for the test statistic for $H_0$ vs.\ $H_1$ is quite simple and can be expressed as
+
+\begin{lstlisting}
+"""
+Resample test statistic z using m-of-n bootstrap
+
+Inputs:
+param   - function to compute location or dispersion
+          parameter, e.g. mean, median, iqr
+Ps, Qs  - sampled run times for programs P and Q
+nresamp - size of resample
+ntrials - number of resamplings
+"""
+function resamp(param, Ps, Qs, nresamp, ntrials)
+    diff = zeros(ntrials)
+    for i in 1:ntrials
+        diff[i] = param(rand(Ps, nresamp)) -
+                  param(rand(Qs, nresamp))
+    end
+    return diff
+end
+
+z  = median(Ps) - median(Qs)
+zs = resamp(median, Ps, Qs, nresamp, ntrials)
+p  = mean(z .> zs) %Compute p-value
+\end{lstlisting}
 
 \TODO{Say something about how we are doing m-of-n bootstrap, sampling without replacement, and what are typical resample sizes and number of trials that give us reliable estimates.}
 
@@ -324,7 +368,7 @@ The code is available freely on GitHub under the MIT ``Expat'' License.
 
 \item
 \href{https://github.com/JuliaCI/BenchmarkTools.jl}{BenchmarkTools.jl}
-is a Julia package for automated benchmarking and regression testing, implementing the statistical ideas described above for automated regression testing.
+is a Julia package for automated benchmarking and regression testing, implementing the statistical ideas described above for automated regression testing. Its documentation also lists \href{https://github.com/JuliaCI/BenchmarkTools.jl/blob/60dfe83e5434c87b7311ca5d9f185f45752ed510/doc/linuxtips.md}{recommendations for improving quiescence and reducing timing variability}.
 
 \item
 \href{https://github.com/JuliaCI/BaseBenchmarks.jl}{BaseBenchmarks.jl}
