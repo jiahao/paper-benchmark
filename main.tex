@@ -44,23 +44,101 @@ Email: \{jiahao,jrevels\}@csail.mit.edu}
 
 \section{Introduction}
 
-If we want to be able to say that ``Program A is faster than Program B'', we
-need to time both programs.
+Developers who care about high performance computing need not only unit tests that
+ensure that their programs are correct, but also regression tests that safeguard
+against performance degradation. However, modern computers are extremely complicated
+systems that do many things under the hood~\cite{HP5e}.
+For example, modern CPUs feature frequency scaling, thread rescheduling,
+out of order execution,
+and variations in memory layout (ASLR, swapping, etc.), the exact NUMA architecture
+of which may lead to effects like cache misses.
+Furthermore the operating system may introduce further performance variations
+due to processes like paging virtual memory.
+And then there is environmental factors such as network traffic that may lead to
+further variation. We call all these factors jitter.
+Jitter complicates the accurate and reproducible timing of programs, which we
+need so that we can say that ``this change made my program run faster or slower''.
 
-Modern computer systems make benchmarking hard. They do many things under the
-hood that can screw up the comparison~\cite{HP5e}.
+There is a lot of work on machine quiescence, to reduce variation in the performance
+behavior of CPUS. Relevant work exists to
 
-\subsection{Factors affecting timings}
+- reducing OS jitter to increase data reproducibility
 
-\TODO{jrevels to fill in}
+- reducing OS jitter to increase performance
 
+- randomization of  to induce Gaussian timing distributions
 
-\subsection{Quiescence}
+- strategies for orchestrating performance counters
 
-There is a lot of work trying to make the system more reliable, reducing variation. Some examples are \TODO{MORE} . But in practice it is still impossible to eliminate every single source of jitter. In these cases where there is irreducible jitter we have no choice but to resort to a statistical description of the benchmarking process.
+Nevertheless it is impossible to eliminate variation
+entirely, and one may even argue that quiescence is not a typical machine
+configuration that users encounter in practice.
+In these cases where there is irreducible jitter we have no choice but to resort to a statistical description of the benchmarking process.
+
+In this paper, we present a statistically rigorous approach to performance regression
+testing that is valid in the presence of OS jitter.
+
+\TODO{portability}
+
 
 
 \section{Methodology}
+
+We only focus on stateless benchmarks $P_0$, so that in principle, the benchmark program can be run many times, each time producing the same deterministic output. Even though the benchmark program $P_0$ itself may be stateless, its environment---the hardware it runs on, the operating system, and other programs that may also be running on the machine, for example---does carry some state and produces side effects which introduce variations in the runtime of $P_0$.
+
+In order to classify regressions in the presence of these variations, we need to develop a rigorous statistical model for our runtime that incorporates them.
+
+\label{sec:statmodel}
+\subsection{A simple statistical model for nondeterministic execution times in the presence of OS jitter}
+
+In this work we adopt a simple model for program execution. Assume for the moment that we have only a single instruction pipeline and that the user's program $P_0$ may be specified as a single sequence of instructions, which we shall denote
+
+$P_0$ = \begin{tabular}{|c|c|c|c|c|}
+\hline
+$I_1$ & $I_2$ & $\cdots$ & $I_N$ \tabularnewline
+\hline
+\end{tabular}
+
+Assume that each instruction $I_i$ takes exactly time $T_{I_i}$ to execute.
+In an idealized universe, the user program $P_0$ will execute in time $T_{P_0} = \sum_{i=1}^N T_{I_i}$ clock cycles. However, due to any of the external factors mentioned above, the CPU or operating system may choose to do things other than one of the instructions $I_k$. We model this by saying that the idealized program $P_0$ is transformed into a new program $P$, which consists of the same sequence of instructions from the user's program $P_0$, but interleaved with delay instructions $D_j$:
+
+$P$ = \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|}
+\hline
+$D_1$ & $I_1$ & $D_2$ & $I_2$ &
+$\cdots$ & $D_N$ & $I_N$ & $D_{N+1}$
+\tabularnewline
+\hline
+\end{tabular}
+
+The delay instructions model branching to instructions that do not belong to $P_0$, but are nevertheless run because they are triggered by the environment of $P_0$, such as its operating system or hardware state, or even a network interrupt. The run time of $P$ is no longer $T_{P_0}$, but
+$T_P = T_{P_0} + \sum_{j=1}^{N+1} D_j$ instead.
+
+Further imagine that this machine has $N_f$ independent factors of OS (environmental) jitter, which we label in superscripts $\cdot^{(i)}$. Each jitter factor can trigger with probability $p^{(i)}$, and each time the jitter factor is triggered, it will take time $T^{(i)}$ to run. Let $x^{i}_j \in \{0, 1\}$ indicate whether the $i$th jitter factor is triggered each time in the random delay instruction $R_j$. Then the run time of $D_j$ is
+$T_{D_j} = \sum_{i=1}^{N_f} x^{(i)}_j T^{(i)}$ and is no longer deterministic, but instead a random variable.
+
+Putting all these things together, we get
+
+\begin{equation}
+T_P = T_{P_0} + \sum_{j=1}^{N+1} \sum_{i=1}^{N_f} x^{(i)}_j T^{(i)}
+= T_{P_0} + \sum_{i=1}^{N_f} X_P^{(i)} T^{(i)},
+\end{equation}
+%
+where $X_P^{(i)} = \sum_{j=1}^{N+1} x^{(i)}_j$ is the number of times the jitter factor $i$ was triggered when running the program $P$.
+
+The randomness has a natural interpretation in the Kolmogorov formulation of probability. We could in principle gather so much information about the exact microscopic configuration $\mathcal S$ of a computer, down to its precise hardware specification, operating temperature, and all the bits in its I/O streams, caches, buffers, and storage devices, and so on, that we could know deterministically how long each delay instruction $D_j$ would take to run. If we could also restore the computer to the precise state $\mathcal S$ after running the program $P$, then the computer will execute $P$ again with exactly the same, deterministic run time. In practice, however, we never know $\mathcal S$ with enough detail to describe $T_P$ deterministically. Instead, we must make do with an imprecise specification of the machine state, saying instead that the machine state $\mathcal S$ is only known to belong to some set $S$ of possible machine states belonging to the sample space $\Omega$. In this sense, our probabilistic description of program execution is reminiscent of the microcanonical ensemble in statistical mechanics.
+
+Let's note a few properties of this model:
+
+First of all, $T_P \ge T_{P_0}$ since each characteristic time $T^{(i)} > 0$ is positive. Therefore $P$ always takes more time to execute than $P_0$.
+For this model to apply, we must assume that jitter that causes \textit{faster}
+execution times, such as frequency boosting, are absent and disabled with the
+appropriate hardware and OS configuration settings. We have equality $T_P = T_{P_0}$
+for machine states $\mathcal S_0$ that trigger no jitter whatsoever. Such a machine state may not exist, but nevertheless there must exist some state (or collection of states) $\mathcal S_*$ that minimizes $T_P$ to some value, $T^*_P$, invoking the fewest possible jitter factors that lead to smallest possible increase in execution time over $T_{P_0}$.
+Statistically speaking, there must exist some critical time $T^*_P$ for which the probability density function (pdf) $f_P(t)$ of $T_P$ of obeys $f_P(t) = 0 \; \forall \; t < T^*_P$.
+
+Secondly, there are special case limiting behaviors that make a lot of sense. For example, if there is only $N_f = 1$ factor of OS jitter, then $X^{(1)}$ follows a binomial distribution with $N$ samples and proability $p^{(1)}$. If furthermore the number of instructions $N$ is sufficiently large, then and there is only $N_f = 1$ factor of OS jitter, then the behavior of $X^{(1)}$ follows a Poisson (exponential) distribution with rate $p^{(1)} N$. If there are $N_f > 1$ factors of OS jitter, each with identical trigger probability $p^{(i)} = \pi$ and characteristic time scale $T^(i) = \tau$, then $X = \sum_{i=1}^{N_f} X^{(i)}$ follows an Erlang distribution with shape parameter $k$ and rate $p^{(1)} N$. Of course in practice, few benchmarks obey such idealized behavior, but they are useful limiting cases to bear in mind. Furthermore our model is general enough to cover the wide variety of distributions seen in practice. An important nonideal case is the observation of two or more modes in $f_P$. Such behavior is consistent with a model $T_P = T_Y Y + T_Z Z$, where $T_Y$ and $T_Z \ne T_Y$ are constants describing a characteristic time scales associated with random variables $Y$ and $Z$ respectively, and $Y$ is an Erlang distribution and $Z$ is a binomial distribution.
+
+
 
 \subsection{A compromise between timer accuracy and jitter determines how many times to run the benchmark}
 
@@ -74,59 +152,16 @@ Some papers
 \TODO{who?}
 advocate a linear search methodology to choose the optimal $n$ where you keep increasing the number of repetitions linearly up to a fixed upper bound, say 1 minute, then do a linear regression to find which region starts to exhibit linear scaling with the number of repetitions. However, a common error in these descriptions is that they tend to also include many data points with total times comparable or less than the timer accuracy. Actually we should throw all of these away because having many inaccurate points biases the least squares search. Or maybe we should do instead weighted least squares so that the regression knows something about error bars. In practice throwing away the short runs suffices. Also you don't want to have too many data points with very long run times because you may start to trigger new jitter factors with longer characteristic time scales.
 
-Let's justify the linear search strategy. Let $h$ be timer resolution noise, $n_1, n_2, ..., n_k$ be a sequence for the number of repetitions $n$ to be tried, and $T_j$ be the execution time measured when the number of repetitions is $n_j$. We assume that the measured execution time can be decomposed into
+Let's justify the linear search strategy. Let $h$ be the timer accuracy, $n_1, n_2, ..., n_k$ be a sequence for the number of repetitions $n$ to be tried, and $T_j$ be the execution time measured when the number of repetitions is $n_j$. We assume that the measured execution time can be decomposed into
 
 \begin{equation}
-    T_j = n_j \tau + h + jitter
+    T_j = n_j \tau + h + \sum_{i=1}^{N_f} X_P^{(i)} T^{(i)}
 \end{equation}
 %
 where $\tau$ is the true execution time for the benchmark. If the $h + jitter$ term is constant then a linear regression will have slope $\tau$ and intercept $h + jitter$. In practice the jitter term will also grow with $n_j$ and this complicates the analysis.
 
 We therefore recommend a truncated linear regression trimming all runs lasting less than the timer accuracy of 1 μs.
 
-\label{sec:statmodel}
-\subsection{A simple statistical model for nondeterministic execution times in the presence of OS jitter}
-
-In this work we adopt a simple model for program execution. Assume for the moment that we have only a single instruction pipeline and that the user's program $P_0$ may be specified as a single sequence of instructions, which we shall denote
-
-$P_0$ = \begin{tabular}{|c|c|c|c|c|}
-\hline
-$I_1$ & $I_2$ & $\cdots$ & $I_N$ \tabularnewline
-\hline
-\end{tabular}
-
-Assume that each instruction $I_i$ takes exactly one clock cycle. In an idealized universe, the user program $P_0$ will execute in time $T_0 = N$ clock cycles. However, due to any of the external factors mentioned above, the CPU or operating system may choose to do things other than one of the instructions $I_k$. We model this by saying that the idealized program $P_0$ is transformed into a new program $P$, which consists of the same sequence of instructions  from the user's program $P_0$, but interleaved with delay instructions $D_j$:
-
-$P$ = \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|}
-\hline
-$D_1$ & $I_1$ & $D_2$ & $I_2$ &
-$\cdots$ & $D_N$ & $I_N$ & $D_{N+1}$
-\tabularnewline
-\hline
-\end{tabular}
-
-The delay instructions model branching to instructions that do not belong to $P_0$, but are nevertheless run because they are triggered by the environment of $P_0$, such as its operating system or hardware state, or even a network interrupt. The run time of $P$ is no longer $N$, but
-$T_P = N + \sum_{j=1}^{N+1} D_j$.
-
-Further imagine that this machine has $N_f$ independent factors of OS (environmental) jitter, which we label in superscripts $\cdot^{(i)}$. Each jitter factor can trigger with probability $p^{(i)}$, and each time the jitter factor is triggered, it will take time $T^{(i)}$ to run. Let $x^{i}_j \in \{0, 1\}$ indicate whether the $i$th jitter factor is triggered each time in the random delay instruction $R_j$. Then the run time of $D_j$ is
-$T_{D_j} = \sum_{i=1}^{N_f} x^{(i)}_j T^{(i)}$ and is no longer deterministic, but instead a random variable.
-
-Putting all these things together, we get
-
-\begin{equation}
-T_P = N + \sum_{j=1}^{N+1} \sum_{i=1}^{N_f} x^{(i)}_j T^{(i)}
-= N + \sum_{i=1}^{N_f} X_P^{(i)} T^{(i)},
-\end{equation}
-%
-where $X_P^{(i)} = \sum_{j=1}^{N+1} x^{(i)}_j$ is the number of times the jitter factor $i$ was triggered when running the program $P$.
-
-The randomness has a natural interpretation in the Kolmogorov formulation of probability. We could in principle gather so much information about the exact microscopic configuration $\mathcal S$ of a computer, down to its precise hardware specification, operating temperature, and all the bits in its I/O streams, caches, buffers, and storage devices, and so on, that we could know deterministically how long each delay instruction $D_j$ would take to run. If we could also restore the computer to the precise state $\mathcal S$ after running the program $P$, then the computer will execute $P$ again with exactly the same, deterministic run time. In practice, however, we never know $\mathcal S$ with enough detail to describe $T_P$ deterministically. Instead, we must make do with an imprecise specification of the machine state, saying instead that the machine state $\mathcal S$ is only known to belong to some set $S$ of possible machine states belonging to the sample space $\Omega$. In this sense, our probabilistic description of program execution is reminiscent of the microcanonical ensemble in statistical mechanics.
-
-Let's note a few properties of this model:
-
-First of all, $T_P \ge T_0$ since each characteristic time $T^{(i)} > 0$ is positive. Therefore $P$ always takes more time to execute than $P_0$. More importantly, there must exist some critical time $T^*_P$ for which the probability density function (pdf) $f_P(t)$ of $T_P$ of obeys $f_P(t) = 0 \; \forall \; t < T^*_P$. The critical time $T^*_P \ge T_0$, with equality holding if and only if there exists some microscopic configuration $\mathcal S$ such that no factors of OS jitter are triggered, i.e.\ $x^{(i)}_j = 0$ for all factors $i$ and instructions $j$.
-
-Secondly, there are special case limiting behaviors that make a lot of sense. For example, if there is only $N_f = 1$ factor of OS jitter, then $X^{(1)}$ follows a binomial distribution with $N$ samples and proability $p^{(1)}$. If furthermore the number of instructions $N$ is sufficiently large, then and there is only $N_f = 1$ factor of OS jitter, then the behavior of $X^{(1)}$ follows a Poisson (exponential) distribution with rate $p^{(1)} N$. If there are $N_f > 1$ factors of OS jitter, each with identical trigger probability $p^{(i)} = \pi$ and characteristic time scale $T^(i) = \tau$, then $X = \sum_{i=1}^{N_f} X^{(i)}$ follows an Erlang distribution with shape parameter $k$ and rate $p^{(1)} N$. Of course in practice, few benchmarks obey such idealized behavior, but they are useful limiting cases to bear in mind. Furthermore our model is general enough to cover the wide variety of distributions seen in practice. An important nonideal case is the observation of two or more modes in $f_P$. Such behavior is consistent with a model $T_P = T_Y Y + T_Z Z$, where $T_Y$ and $T_Z \ne T_Y$ are constants describing a characteristic time scales associated with random variables $Y$ and $Z$ respectively, and $Y$ is an Erlang distribution and $Z$ is a binomial distribution.
 
 
 \subsection{A hypothesis testing approach to regression testing}
@@ -165,8 +200,6 @@ Therefore our current recommendation is to use an inter-quantile range as the lo
 
 \subsection{A bootstrap procedure for hypothesis testing}
 
-The thing we don't know h
-
 \TODO{jiahao to fill in}
 
 \begin{figure}[!t]
@@ -178,6 +211,9 @@ The thing we don't know h
 \end{figure}
 
 \section{Results on some Julia benchmarks}
+
+Samples generally appears to follow a Gamma distribution, plus modes at points of high-frequency noise (large `xᵢ`s). The modality/phase structure of the samples seems to be a property inherent to each benchmark, . This could be interpreted as either the benchmark is characteristically vulnerable to certain sources of noise, or that the benchmark triggers certain sources of noise with high frequency.
+
 
 \begin{figure}[!t]
 \centering
@@ -238,3 +274,4 @@ This work was supported by the Nanosoldier grant.\TODO{Get grant info}
 
 % that's all folks
 \end{document}
+\grid
