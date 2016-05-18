@@ -6,6 +6,7 @@
 
 \usepackage{cite}
 \usepackage{amsmath}
+\usepackage{caption}
 \usepackage{subcaption}
 % Note that the amsmath package sets \interdisplaylinepenalty to 10000
 % thus preventing page breaks from occurring within multiline equations. Use:
@@ -91,7 +92,6 @@ Figure~\ref{fig:examplebenchmarks} illustrates some of the many behaviors exhibi
     \caption{TODO More crazy?}
 \end{subfigure}
 
-%\includegraphics[width=2.5in]{myfigure}
 \caption{Some typical variations in benchmark timings.}
 \label{fig:examplebenchmarks}
 \end{figure}
@@ -224,7 +224,30 @@ What we need to do now is to distinguish the constant factor $T^*_P - T^*_Q$, th
 
 \TODO{... SKIP SOME STEPS ...}
 
-Let $l_P$ and $l_Q$ be location parameters, such as the means, medians, minima, or interquartile ranges that characterize $f_P$ and $f_Q$. Then we can write down a hypothesis test
+\subsection{Hypothesis tests for two kinds of regressions}
+
+It turns out that there are two kinds of regressions that can be described in our framework, as shown in Figure~\ref{fig:regressionkinds}. The first kind of regression is defined by a statistically significant change in location parameters such as the mean, median, minimum, or trimmed mean. The probability density $f_Q$ is shifted to the right of $f_P$. The second kind of regression is defined by a statistically significant change in dispersion parameters such as the standard deviation or interquartile range. The probability density $f_Q$ is more spread out than $f_P$. This kind of regression has no deterministic counterpart.
+
+\begin{figure}
+\centering
+
+\begin{subfigure}{0.22\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
+    \caption{TODO regression of the first kind}
+\end{subfigure}%
+~
+\begin{subfigure}{0.22\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
+    \caption{TODO regression of the second kind}
+\end{subfigure}
+
+\caption{Regressions of the first and second kinds. TODO legend.}
+\label{fig:regressionkinds}
+\end{figure}
+
+Let $l_P$ and $l_Q$ be location or dispersion parameters. Then we can write down a hypothesis test
 
 \begin{subequations}
 \begin{align}
@@ -235,18 +258,52 @@ H_1&: l_P < l_Q
 
 If $H_1$ is true, then we have a performance regression if program $Q$ replaces program $P$.
 
+
+\subsection{Choice of location parameter}
+
 There is a question of what location parameter to use.
-One may want to use the means, but as we all know the means are sensitive to large outliers. We see large outliers in the benchmark data, which happens when some OS jitter factor with a very long delay is triggered. Quantile-based measures such as the mean and minimum are sensitive to non-stationary OS jitter, for example if there is some jitter factor $i$ such that $X^{(i)}_P = 1$ while $X^{(i)}_Q = 0$ determistically. There is a fundamental definition problem in this situation. If we acknowledge that factor $i$ is always triggered once every time program $P$ runs but not in $Q$, then we could could fold the contribution of factor $i$ into the definition of $T^*_P$, recognizing that it is not possible to run $P$ without triggering factor $i$. However, it is impossible to distinguish statistically between this case and non-stationary jitter, i.e.\ jitter that changes the machine's behavior for a time period longer than, say, the combined run times of $P$ and $Q$. For example, the OS may decide to start paging virtual memory to disk halfway through running $P$, which continues all throughout the time when the user runs $Q$. Another possibility is that the machine running the benchmark encounters an unusally high level of network traffic when running $P$ and $Q$, for example if the machine is suffering a DDoS attack. The only way to detect this kind of nonstationary noise is to run $P$ and $Q$ enough times so that the combined run time exceeds the characteristic time scale for this jitter. However, in practice this may require benchmarks to run for unacceptably long times.
+One may want to use the means, but as we all know the means are sensitive to large outliers. We see large outliers in the benchmark data, which happens when some OS jitter factor with a very long delay is triggered.
+Figure~\ref{fig:locationmeasures} show the various kinds of behavior different location measures can exhibit.
 
-Therefore our current recommendation is to use an inter-quantile range as the location parameter. It is easy to calculate the estimators $\hat l_P$ and $\hat l_Q$. However, we don't know analytically what the distribution of $l_P - l_Q$ looks like, which we need to know in order to describe the appropriate time scale $\tau$ to describe statistical significance. (This time scale generalizes the standard error of the $t$-statistic when comparing the means of two Gaussians.) So we use a bootstrap procedure to estimate this scale $\tau$~\cite{Efron1981}.
+\begin{figure}
+\centering
+
+\begin{subfigure}{0.22\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
+    \caption{TODO mean}
+\end{subfigure}%
+~
+\begin{subfigure}{0.22\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
+    \caption{TODO median}
+\end{subfigure}
+
+\begin{subfigure}{0.22\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_sqralloc}
+    \caption{TODO minimum}
+\end{subfigure}
+~
+\begin{subfigure}{0.22\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_sqralloc}
+    \caption{TODO trimmed mean}
+\end{subfigure}
+
+\caption{Variations in location measures on some benchmark.}
+\label{fig:locationmeasures}
+\end{figure}
+
+Hypothesis testing based on location measures are sensitive to non-stationary OS jitter, for example if there is some jitter factor $i$ such that $X^{(i)}_P = 1$ while $X^{(i)}_Q = 0$ determistically. There is a fundamental definition problem in this situation. If we acknowledge that factor $i$ is always triggered once every time program $P$ runs but not in $Q$, then we could could fold the contribution of factor $i$ into the definition of $T^*_P$, recognizing that it is not possible to run $P$ without triggering factor $i$. However, it is impossible to distinguish statistically between this case and non-stationary jitter, i.e.\ jitter that changes the machine's behavior for a time period longer than, say, the combined run times of $P$ and $Q$. For example, the OS may decide to start paging virtual memory to disk halfway through running $P$, which continues all throughout the time when the user runs $Q$. Another possibility is that the machine running the benchmark encounters an unusally high level of network traffic when running $P$ and $Q$, for example if the machine is suffering a DDoS attack. The only way to detect this kind of nonstationary noise is to run $P$ and $Q$ enough times so that the combined run time exceeds the characteristic time scale for this jitter. However, in practice this may require benchmarks to run for unacceptably long times.
 
 
+\subsection{Choice of dispersion parameter}
 
-\subsection{A bootstrap procedure for hypothesis testing}
+Our current recommendation is to use an inter-quantile range as the location parameter. It is easy to calculate the estimators $\hat d_P$ and $\hat d_Q$. However, we don't know analytically what the distribution of $d_P - d_Q$ looks like, which we need to know in order to describe the appropriate time scale $\tau$ to describe statistical significance. (This time scale generalizes the standard error of the $t$-statistic when comparing the means of two Gaussians.) So we use a bootstrap procedure to estimate this scale $\tau$~\cite{Efron1981}.
 
-\TODO{jiahao to fill in}
-
-
+\TODO{Say something about how we are doing m-of-n bootstrap, sampling without replacement, and what are typical resample sizes and number of trials that give us reliable estimates.}
 
 
 \section{Implementation in Julia}
@@ -271,6 +328,12 @@ contains GitHub API hooks that trigger some or all the benchmarks to be run on t
 Julia developers can simply write a suitable comment on issues and pull requests on the Julia repository on GitHub that mention the \href{https://github.com/nanosoldier}{@nanosoldier} GitHub user. The bot underneath runs the regression tests on the Nanosoldier, commits a report to the \href{https://github.com/JuliaCI/BaseBenchmarkReports}{BaseBenchmarkReports} repository, and replies in a follow-up comment with a summary indicating any potential performance regressions detected.
 
 \end{itemize}
+
+\subsection{Some simple benchmarks}
+
+For discussion purposes we wrote some simple benchmarks and mock codes that exhibit regressions. They are:
+
+\TODO{describe}
 
 
 
@@ -298,6 +361,9 @@ Samples generally appears to follow a Gamma distribution, plus modes at points o
 
 \section{Limitations of our current approach}
 
+We can't distinguish between a regression of the first kind and nonstationary jitter.
+
+Another problem is that we see correlation in some benchmarks. Our bootstrap framework can't really deal with that.
 
 
 \section{Conclusion}
@@ -308,7 +374,7 @@ Samples generally appears to follow a Gamma distribution, plus modes at points o
 
 \section*{Acknowledgment}
 
-We thank the many Julia developers for many insightful discussions.
+We thank the many Julia developers, in particular Andreas Noack for many insightful discussions.
 
 This work was supported by the Nanosoldier grant.\TODO{Get grant info}
 
