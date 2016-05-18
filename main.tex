@@ -192,14 +192,22 @@ advocate a linear search methodology to choose the optimal $n$ where you keep in
 Let's justify the linear search strategy. Let $h$ be the timer accuracy, $n_1, n_2, ..., n_k$ be a sequence for the number of repetitions $n$ to be tried, and $T_j$ be the execution time measured when the number of repetitions is $n_j$. We assume that the measured execution time can be decomposed into
 
 \begin{equation}
+    \label{eq:linsearch}
     T_j(n_j) = n_j \tau + h + \sum_{i=1}^{N_f} X_j^{(i)} T^{(i)}
 \end{equation}
 %
 where $\tau$ is the true execution time for the benchmark. If the last two terms
 are constant then a linear regression will have slope $\tau$ and intercept $h + \sum_{i=1}^{N_f} X_P^{(i)} T^{(i)}$. But $h$ is not deterministic. Furthermore, the jitter term will also grow with $n_j$ and this complicates the analysis.
-However, if we assume that $h$ is independent of $n_j$ and that each $X_j^{(i)} = o(n_j)$,\footnote{This assumption can be relaxed somewhat to $X_j^{(i)} = O(n_j)$. By definition, there then exist positive constants $M^{(i)} > 0$ such that for all sufficiently large $n_j$, $X_j^{(i)} < M^{(i)} n_j$, in which case the observed gradient is $\tau + \sum_i M^{(i)} > \tau$ } then for sufficiently large $n_j$ the observed gradient is $\tau$.
+However, if we assume that $h$ is independent of $n_j$ and that each $X_j^{(i)} = O(n_j)$, then by definition, there then exist positive constants $M^{(i)} > 0$ such that for all sufficiently large $n_j$, $X_j^{(i)} < M^{(i)} n_j$, in which case the observed gradient is $\tau^* = \tau + \sum_i M^{(i)} > \tau$\footnote{If we have instead that $X_j^{(i)} = o(n_j)$, then the gradient asympotitically is just $\tau$}.
 
-In practice, we observe that there are some benchmarks that pick up jitter factors with very large time scales. These occurrences can be explained in several ways in our model. The simplest way is to posit some factor $l$ for which $T^{(l)} = O(n_j \tau) = O(n_j)$ and $X_j^{(i)}(n) = H(n - n^\ddagger)$,
+\begin{figure}
+\centering
+\includegraphics[width=0.45\textwidth]{experiments/images/fmanytrials_wide}
+\caption{$T_j(n)/n$ for many repeated linear scans for a particular benchmark, where $T_j$ is defined in \eqref{eq:linsearch}. Each curve denotes a different linear scan. Note the large spikes produced by jitter.}
+\label{fig:scaling}
+\end{figure}
+
+In practice, we observe that there are some benchmarks that pick up jitter factors with very large time scales. An example of such a benchmark is shown in Figure~These occurrences can be explained in several ways in our model. The simplest way is to posit some factor $l$ for which $T^{(l)} = O(n_j \tau) = O(n_j)$ and $X_j^{(i)}(n) = H(n - n^\ddagger)$,
 where $H$ is the Heaviside step function. The existence of such a factor produces a discontinuity in the gradient at $n^\ddagger$. In practice, some caution must be taken to avoid triggering such a jitter factor.
 
 We therefore recommend a truncated linear regression trimming all runs lasting less than the timer accuracy of 1 μs.
@@ -301,7 +309,7 @@ Hypothesis testing based on location measures are sensitive to non-stationary OS
 
 \subsection{Choice of dispersion parameter}
 
-Our current recommendation is to use an inter-quantile range as the location parameter. It is easy to calculate the estimators $\hat d_P$ and $\hat d_Q$. However, we don't know analytically what the distribution of $d_P - d_Q$ looks like, which we need to know in order to describe the appropriate time scale $\tau$ to describe statistical significance. (This time scale generalizes the standard error of the $t$-statistic when comparing the means of two Gaussians.) So we use a bootstrap procedure to estimate this scale $\tau$~\cite{Efron1981}.
+Our current recommendation is to use an inter-quantile range as the location parameter. It is easy to calculate the estimators $\hat d_P$ and $\hat d_Q$. However, we don't know analytically what the distribution of $d_P - d_Q$ looks like, which we need to know in order to describe the appropriate time scale $\tau$ to describe statistical significance. (This time scale generalizes the standard error of the $t$-statistic when comparing the means of two Gaussians.) So we use a bootstrap procedure to estimate this scale $\tau$~\cite{Chernick2008}.
 
 \TODO{Say something about how we are doing m-of-n bootstrap, sampling without replacement, and what are typical resample sizes and number of trials that give us reliable estimates.}
 
@@ -348,14 +356,6 @@ Samples generally appears to follow a Gamma distribution, plus modes at points o
 %\includegraphics[width=2.5in]{myfigure}
 \caption{Clustering of Julia benchmarks.}
 \label{fig:benchclusters}
-\end{figure}
-
-\begin{figure}[!t]
-\centering
-\TODOFIG{Real benchmark timings}
-%\includegraphics[width=2.5in]{myfigure}
-\caption{How benchmark timings scale with the number of repetitions $n$.}
-\label{fig:scaling}
 \end{figure}
 
 
