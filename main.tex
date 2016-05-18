@@ -10,6 +10,7 @@
 %\interdisplaylinepenalty=2500
 % after loading amsmath to restore such page breaks as IEEEtran.cls normally
 \usepackage{url}
+\usepackage{hyperref}
 
 % correct bad hyphenation here
 \hyphenation{}
@@ -155,13 +156,18 @@ advocate a linear search methodology to choose the optimal $n$ where you keep in
 Let's justify the linear search strategy. Let $h$ be the timer accuracy, $n_1, n_2, ..., n_k$ be a sequence for the number of repetitions $n$ to be tried, and $T_j$ be the execution time measured when the number of repetitions is $n_j$. We assume that the measured execution time can be decomposed into
 
 \begin{equation}
-    T_j = n_j \tau + h + \sum_{i=1}^{N_f} X_P^{(i)} T^{(i)}
+    T_j(n_j) = n_j \tau + h + \sum_{i=1}^{N_f} X_j^{(i)} T^{(i)}
 \end{equation}
 %
-where $\tau$ is the true execution time for the benchmark. If the $h + jitter$ term is constant then a linear regression will have slope $\tau$ and intercept $h + jitter$. In practice the jitter term will also grow with $n_j$ and this complicates the analysis.
+where $\tau$ is the true execution time for the benchmark. If the last two terms
+are constant then a linear regression will have slope $\tau$ and intercept $h + \sum_{i=1}^{N_f} X_P^{(i)} T^{(i)}$. But $h$ is not deterministic. Furthermore, the jitter term will also grow with $n_j$ and this complicates the analysis.
+However, if we assume that $h$ is independent of $n_j$ and that each $X_j^{(i)} = o(n_j)$,\footnote{This assumption can be relaxed somewhat to $X_j^{(i)} = O(n_j)$. By definition, there then exist positive constants $M^{(i)} > 0$ such that for all sufficiently large $n_j$, $X_j^{(i)} < M^{(i)} n_j$, in which case the observed gradient is $\tau + \sum_i M^{(i)} > \tau$ } then for sufficiently large $n_j$ the observed gradient is $\tau$.
+
+In practice, we observe that there are some benchmarks that pick up jitter factors with very large time scales. These occurrences can be explained in several ways in our model. The simplest way is to posit some factor $l$ for which $T^{(l)} = O(n_j \tau) = O(n_j)$ and $X_j^{(i)}(n) = H(n - n^\ddagger)$,
+where $H$ is the Heaviside step function. The existence of such a factor produces a discontinuity in the gradient at $n^\ddagger$. In practice, some caution must be taken to avoid triggering such a jitter factor.
 
 We therefore recommend a truncated linear regression trimming all runs lasting less than the timer accuracy of 1 μs.
-
+\TODO{This is not the correct description of what we actually do}
 
 
 \subsection{A hypothesis testing approach to regression testing}
@@ -198,6 +204,8 @@ One may want to use the means, but as we all know the means are sensitive to lar
 
 Therefore our current recommendation is to use an inter-quantile range as the location parameter. It is easy to calculate the estimators $\hat l_P$ and $\hat l_Q$. However, we don't know analytically what the distribution of $l_P - l_Q$ looks like, which we need to know in order to describe the appropriate time scale $\tau$ to describe statistical significance. (This time scale generalizes the standard error of the $t$-statistic when comparing the means of two Gaussians.) So we use a bootstrap procedure to estimate this scale $\tau$~\cite{Efron1981}.
 
+
+
 \subsection{A bootstrap procedure for hypothesis testing}
 
 \TODO{jiahao to fill in}
@@ -209,6 +217,31 @@ Therefore our current recommendation is to use an inter-quantile range as the lo
 \caption{How benchmark timings ought to scale with the number of repetitions $n$ according to the statistical model of Sec.~\ref{sec:statmodel}.}
 \label{fig:idealscaling}
 \end{figure}
+
+
+
+\section{Implementation in Julia}
+
+We have implemented the stastistical ideas described above in a suite of packages available on GitHub under the \href{https://github.com/JuliaCI}{JuliaCI} organization.
+The code is implemented in Julia. Julia is an emerging programming language designed for technical computing, an area where performance considerations are very important.
+The code is available freely on GitHub under the MIT ``Expat'' License.
+
+\begin{description}
+
+\item
+[\href{https://github.com/JuliaCI/BenchmarkTools.jl}{BenchmarkTools.jl}]
+is a Julia package for automated benchmarking and regression testing, implementing the statistical ideas described above for automated regression testing.
+
+\item
+[\href{https://github.com/JuliaCI/BaseBenchmarks.jl}{BaseBenchmarks.jl}]
+is a collection of approximately 2,500 benchmarks which can be used for testing performance regressions in the Julia base library and compiler.
+
+\item
+[\href{https://github.com/JuliaCI/Nanosoldier.jl}{Nanosoldier.jl}]
+contains GitHub API hooks that trigger some or all the benchmarks to be run on the Nanosoldier, a dedicated machine at MIT reserved solely for regression testing.
+Julia developers can simply write a suitable comment on issues and pull requests on the Julia repository on GitHub that mention the \href{https://github.com/nanosoldier}{@nanosoldier} GitHub user. The bot underneath runs the regression tests on the Nanosoldier, commits a report to the \href{https://github.com/JuliaCI/BaseBenchmarkReports}{BaseBenchmarkReports} repository, and replies in a follow-up comment with a summary indicating any potential performance regressions detected.
+
+\end{description}
 
 \section{Results on some Julia benchmarks}
 
