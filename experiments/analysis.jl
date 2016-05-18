@@ -10,60 +10,59 @@ BenchmarkTools.loadplotting()
 const evals_group = JLD.load("results/evals_results.jld", "suite")
 const group = JLD.load("results/results.jld", "suite")
 
-###################
-# Hypothesis Test #
-###################
+######################
+# hypothesis testing #
+######################
 
-function trim(x, t = 0.10)
-    cut = floor(Int, length(x) * t / 2)
-    return x[(1 + cut):(length(x) - cut)]
+function trim(t, rcut = 0.05, lcut = rcut)
+    left = floor(Int, length(t) * lcut)
+    right = floor(Int, length(t) * lcut)
+    return t[(1 + left):(length(t) - right)]
 end
 
-pvalue(estdist, center = 0.0) = min(mean(center .<= estdist), mean(center .>= estdist))
+function pvalue(estsamps, nullval, testval)
+    flipval = 2testval - nullval # nullval flipped around testval
+    leftbound = min(flipval, nullval)
+    rightbound = max(flipval, nullval)
+    return mean(estsamps .<= leftbound) + mean(rightbound .<= estsamps)
+end
 
-function hypotest(est, a, b)
+function hypotest(est, nullval, a, b; rcut = 0.05, lcut = rcut, kwargs...)
     @assert length(a) == length(b)
-    return pvalue(divdist(est, trim(a), trim(b)), 1.0)
+    trimmed_a = trim(a, rcut, lcut)
+    trimmed_b = trim(b, rcut, lcut)
+    estsamps = bootstrap(est, trimmed_a, trimmed_b; kwargs...)
+    return pvalue(estsamps, nullval, est(trimmed_a, trimmed_b))
 end
 
-###########################
-# Estimator distributions #
-###########################
+#############
+# bootstrap #
+#############
 
-function divdist(est::Function, src1, src2; samples = 100, trials = 5000)
-    divs = zeros(trials)
-    for t in 1:trials
-        divs[t] = est(rand(src1, samples)) / est(rand(src2, samples))
+function bootstrap(est::Function, a, b; resamps = 100, trials = 5000)
+    estsamps = zeros(trials)
+    for i in 1:trials
+        estsamps[i] = est(rand(a, resamps), rand(b, resamps))
     end
-    return sort!(divs)
+    return sort!(estsamps)
 end
 
-function divdist(est::Function, src1::BenchmarkTools.Trial, src2::BenchmarkTools.Trial; kwargs...)
-    return divdist(est, src1.times, src2.times; kwargs...)
-end
-
-function diffdist(est::Function, src1, src2; samples = 100, trials = 5000)
-    diff = zeros(trials)
-    for t in 1:trials
-        diff[t] = est(rand(src1, samples)) - est(rand(src2, samples))
-    end
-    return sort!(diff)
-end
-
-function diffdist(est::Function, src1::BenchmarkTools.Trial, src2::BenchmarkTools.Trial; kwargs...)
-    return diffdist(est, src1.times, src2.times; kwargs...)
+function bootstrap(est::Function, a::BenchmarkTools.Trial, b::BenchmarkTools.Trial; kwargs...)
+    return bootstrap(est, a.times, b.times; kwargs...)
 end
 
 ##############
-# Estimators #
+# estimators #
 ##############
 
-location(x) = (minimum(x) + median(x)) / 2
-dispersion(x) = quantile(x, 0.85) - quantile(x, 0.15)
-estimator(x) = location(x) + dispersion(x)
+location(t) = (minimum(t) + median(t)) / 2
+iqr(t) = quantile(t, 0.85) - quantile(t, 0.15)
+estimator(t) = location(t) + iqr(t)
+estdiff(a, b) = estimator(a) - estimator(b)
+estratio(a, b) = estimator(a) / estimator(b)
 
 #########
-# Tests #
+# tests #
 #########
 
 function alltrials(group, id)
@@ -79,13 +78,13 @@ function alltrials(group, id)
     return group[id_fast], group[id], group[id_slow]
 end
 
-function randpairs(iters, est, trials; threshold = 0.05)
+function randpairs(iters, est, nullval, trials; threshold = 0.05, kwargs...)
     k = length(trials)
     passed_all = true
     for _ in 1:iters
         i, j = rand(1:k), rand(1:k)
         m, n = rand(1:length(trials[i])), rand(1:length(trials[j]))
-        p = hypotest(est, trials[i][m], trials[j][n])
+        p = hypotest(est, nullval, trials[i][m], trials[j][n]; kwargs...)
         reject = p < threshold
         invariant = i == j
         print("[$i][$m] vs. [$j][$n]: $p")
@@ -97,6 +96,9 @@ function randpairs(iters, est, trials; threshold = 0.05)
     return passed_all
 end
 
+
+############################################################################################
+# old code #################################################################################
 ############################################################################################
 # The idea is to have a test statistic that characterizes both location and dispersion,
 # with an estimator taking the form (in code, not stats notation):
@@ -144,26 +146,26 @@ end
 # t_slow vs (t1 || t2) -> regression
 #
 # The samples are selected to be "difficult" to classify relative to each other.
-function picksamples(est, group, id)
-    idstr = string(id)
-    if last(idstr) == '!'
-        idstr = idstr[1:end-1]
-        endstr = "!"
-    else
-        endstr = ""
-    end
-    id_fast = Symbol(string(idstr, "_fast", endstr))
-    id_slow = Symbol(string(idstr, "_slow", endstr))
-    times = [t.times for t in group[id]]
-    times_fast = [t.times for t in group[id_fast]]
-    times_slow = [t.times for t in group[id_slow]]
-    group_estimates = map(est, times)
-    t1 = group[id][indmin(group_estimates)].times
-    t2 = group[id][indmax(group_estimates)].times
-    t_fast = group[id_fast][indmax(map(est, times_fast))].times
-    t_slow = group[id_slow][indmin(map(est, times_slow))].times
-    return t1, t2, t_fast, t_slow
-end
+# function picksamples(est, group, id)
+#     idstr = string(id)
+#     if last(idstr) == '!'
+#         idstr = idstr[1:end-1]
+#         endstr = "!"
+#     else
+#         endstr = ""
+#     end
+#     id_fast = Symbol(string(idstr, "_fast", endstr))
+#     id_slow = Symbol(string(idstr, "_slow", endstr))
+#     times = [t.times for t in group[id]]
+#     times_fast = [t.times for t in group[id_fast]]
+#     times_slow = [t.times for t in group[id_slow]]
+#     group_estimates = map(est, times)
+#     t1 = group[id][indmin(group_estimates)].times
+#     t2 = group[id][indmax(group_estimates)].times
+#     t_fast = group[id_fast][indmax(map(est, times_fast))].times
+#     t_slow = group[id_slow][indmin(map(est, times_slow))].times
+#     return t1, t2, t_fast, t_slow
+# end
 
 # function testsamples(est, group; kwargs...)
 #     for id in keys(group)
