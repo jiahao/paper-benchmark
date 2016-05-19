@@ -49,13 +49,13 @@ end
 
 function bootstrap(a, b; resamps = 5, trials = 100)
     estsamps = zeros(trials)
-    seed = MersenneTwister(1)
+    # seed = MersenneTwister(1)
     for i in 1:trials
         x = Inf
         y = Inf
         for _ in 1:resamps
-            x = min(rand(seed, a), x)
-            y = min(rand(seed, b), y)
+            x = min(rand(a), x) # min(rand(seed, a), x)
+            y = min(rand(b), y) # min(rand(seed, b), y)
         end
         estsamps[i] = x / y
     end
