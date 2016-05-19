@@ -136,7 +136,28 @@ testing that is valid in the presence of OS jitter.
 
 \TODO{portability}
 
+\subsection{What other people have done}
 
+There has been a lot of work done about benchmarking in various computational subdisciplines, ranging from high performance computing to embedded systems to compiler design and implementation. For the most part, the compiler community has focused on approaches that make compilers produces the same executables more reproducibly, such as replay compilation which allows for reproducible binary layouts~\cite{Georges2015}, and low-variability garbage collection in just-in-time compiler virtual machines~\cite{Huang2004}. For the most part, systems people have focused on OS-based approaches, such as soft partitioning of cores and threads between application and systems processes~\cite{Akkan2012}
+
+Nevertheless it is not possible to eliminate variation entirely.
+
+Some of this work has even been specifically applied to performance benchmarking \cite{Alcocer2015,Barrett2016}.
+
+TODO also work on implementing quiescent environments,
+
+There is also work on hardware counters. Basically they are problematic unless you know exactly what they are doing. There is a good review of the accuracy of hardware counters~\cite{Weaver2013}.
+
+There is also some work on software tools for the statistical analysis of benchmarks. The Speedup-Test is an R package for analysing benchmark data~\cite{Touati2013}. There is also the framework of Chen et al 2015~\cite{Chen2015}.
+\TODO{Jarrett has more}
+
+It is widely known that the variability is highly nonnormal and has large outliers, which makes it difficult or impossible to apply standard statistical techniques~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}. Some authors have also acknowledged the need to use robust statistics such as the median as a location parameter~\cite{Mytkowicz2009}, the interquartile range as a dispersion parameter~\cite{Mytkowicz2009}, or the medcouple for measuring skewness~\cite{Rehn2015}.
+However, existing statistical methodologies try to maintain the same testing frameworks using confidence intervals, $t$-tests and $F$-ratios developed for Gaussian statistics, but with outlier removal~\cite{Rehn2015} or biased estimaters to correct for skewness.
+
+In contrast, we propose to throw non-Gaussianity complete out of the window.
+
+Our methodology for regression benchmarking applies also to other cases, e.g.\ testing for performance differences under different compiler flags~\cite{Mytkowicz2009}
+\TODO{What did Grigori Fursin write about this?}
 
 \section{Methodology}
 
