@@ -410,8 +410,11 @@ Figure~\ref{fig:locationmeasures} show the various kinds of behavior different l
 
 \begin{figure}
 \centering
-\includegraphics[width=\textwidth]{figures/fig3/location_estimators_sumindex}
-\caption{Variations in location measures on the ``sumindex'' benchmark. Green ``●'' is the mean, brown ``■'' is the trimmed mean, Black ``x'' is the median, and blue ``▲'' is the minimum.}
+\includegraphics[width=\columnwidth]{figures/fig3/location_estimators_sumindex}
+\caption{The behavior of different location parameters across multiple trials of
+the \lstinline|sumindex| benchmark: mean (green filled circles), trimmed mean of
+the 5th---95th percentiles (brown filled squares), medisn (black crosses), and
+minimum (blue filled triangles).}
 \label{fig:locationmeasures}
 \end{figure}
 
@@ -488,9 +491,10 @@ For discussion purposes we wrote some simple benchmarks and mock codes that exhi
 
 \begin{figure}[!t]
 \centering
-\TODOFIG{Some clusters}
-\includegraphics[width=2.5in]{figures/fig4/kde_pdf_sumindex}
-\caption{PDF of all ``sumindex'' trials overlaid.}
+\includegraphics[width=\columnwidth]{figures/fig4/kde_pdf_sumindex}
+\caption{Probability density functions (pdfs) from repeated trials of the
+\lstinline|sumindex| benchmark. The pdfs form two distinct clusters, indicating
+correlation across multiple trials.}
 \label{fig:pdfsumindex}
 \end{figure}
 
