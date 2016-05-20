@@ -2,12 +2,11 @@ using BenchmarkTools
 using Distributions
 using JLD
 
-# This provides the `plotkde` function, which is pretty convenient for plotting all the
-# of the data contained in `trials`. See the code here:
-# https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/plotting.jl
-BenchmarkTools.loadplotting()
+########
+# data #
+########
 
-const evals_group = JLD.load("results/evals_results.jld", "suite")
+const branchsum_evals = JLD.load("results/branchsum_eval_results.jld", "results")
 const group = JLD.load("results/results.jld", "suite")
 const base1 = JLD.load("results/base/first.jld", "results")
 const base2 = JLD.load("results/base/second.jld", "results")
@@ -141,59 +140,35 @@ function basepairs(x, y; threshold = 0.0001, kwargs...)
     return total, false_positives
 end
 
-##############################
-# generic hypothesis testing #
-##############################
+############
+# plotting #
+############
 
-# location(a, b) = minimum(a) / minimum(b)
-#
-# function trim(t, rcut = 0.05, lcut = rcut)
-#     left = floor(Int, length(t) * lcut)
-#     right = floor(Int, length(t) * lcut)
-#     return t[(1 + left):(length(t) - right)]
-# end
-#
-# function hypotest(est, nullval, a::BenchmarkTools.Trial, b::BenchmarkTools.Trial; kwargs...)
-#     return hypotest(est, nullval, a.times, b.times; kwargs...)
-# end
-#
-# function hypotest(est, nullval, a, b; rcut = 0.0, lcut = rcut, kwargs...)
-#     @assert length(a) == length(b)
-#     trimmed_a = trim(a, rcut, lcut)
-#     trimmed_b = trim(b, rcut, lcut)
-#     estsamps = bootstrap(est, trimmed_a, trimmed_b; kwargs...)
-#     return pvalue(estsamps, nullval, est(trimmed_a, trimmed_b))
-# end
-#
-# function bootstrap(est::Function, a, b; resamps = 5, trials = 100)
-#     estsamps = zeros(trials)
-#     for i in 1:trials
-#         estsamps[i] = est(rand(a, resamps), rand(b, resamps))
-#     end
-#     return estsamps
-# end
-#
-# function bootstrap(est::Function, a::BenchmarkTools.Trial, b::BenchmarkTools.Trial; kwargs...)
-#     return bootstrap(est, a.times, b.times; kwargs...)
-# end
-#
-# function randpairs(iters, est, nullval, populations; threshold = 0.0001, kwargs...)
-#     k = length(populations)
-#     fails = 0
-#     for _ in 1:iters
-#         i, j = rand(1:k), rand(1:k)
-#         m, n = rand(1:length(populations[i])), rand(1:length(populations[j]))
-#         p = hypotest(est, nullval, populations[i][m], populations[j][n]; kwargs...)
-#         reject = p < threshold
-#         invariant = i == j
-#         print("[$i][$m] vs. [$j][$n]: $p")
-#         reject && print("| REJECT ")
-#         if reject == invariant
-#             fails += 1
-#             println("| FAIL")
-#         else
-#             println()
-#         end
-#     end
-#     return fails
-# end
+# This provides the `plotkde` function, which is pretty convenient for plotting all the
+# of the data contained in `trials`. See the code here:
+# https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/plotting.jl
+BenchmarkTools.loadplotting()
+
+function trim(t, rcut = 0.05, lcut = rcut)
+    left = floor(Int, length(t) * lcut)
+    right = floor(Int, length(t) * lcut)
+    return t[(1 + left):(length(t) - right)]
+end
+
+scatterest(est, trials; kwargs...) = scatter(1:length(trials), [est(t.times) for t in trials]; kwargs...)
+
+# assumes trials[n] gives you a Trial with i samples at n evals
+function evalstransform(trial)
+    samples = length(first(trials))
+    evals = length(trials)
+    @assert all(t -> length(t) == samples, trials) "trials must all have same number of samples"
+    results = [Vector{Int}(evals) for _ in 1:samples]
+    for i in 1:samples
+        for n in 1:evals
+            results[i][n] = trials[n].times[i]
+        end
+    end
+    return results
+end
+
+plotall(trials) = for t in trials plot(t) end
