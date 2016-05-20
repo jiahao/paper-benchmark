@@ -171,4 +171,4 @@ function evalstransform(trial)
     return results
 end
 
-plotall(trials) = for t in trials plot(t) end
+plotall(trials; kwargs...) = for t in trials plot(t; kwargs...) end
