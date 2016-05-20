@@ -58,7 +58,17 @@ Email: \{jiahao,jrevels\}@csail.mit.edu}
 \maketitle
 
 \begin{abstract}
-\TODO{The abstract goes here.}
+We propose a fully automated method for detecting performance regressions,
+which relieves developers of the complexities of timing programs associated with
+modern hardware and software environments.
+First, we describe a protocol for determining the optimal number of evaluations
+per timing measurement that minimizes both measurement error
+and delays incurred by system fluctuations.
+Second, we formulate a hypothesis testing framework and use the bootstrap
+resampling method for estimating the error distributions needed to describe
+statistical significance and effect sizes.
+We demonstrate that our method performs well on a small collection of Julia benchmarks,
+exhibiting small false positive and false negative errors despite highly nonnormal statistics.
 \end{abstract}
 
 \IEEEpeerreviewmaketitle
