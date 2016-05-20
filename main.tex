@@ -73,12 +73,15 @@ exhibiting small false positive and false negative errors despite highly nonnorm
 
 \IEEEpeerreviewmaketitle
 
-\section{Introduction}
+\section{The complexity of modern architectures confounds timing measurements}
 
-Developers who care about high performance computing need not only unit tests that
+Developers of high performance applications need not only unit tests that
 ensure that their programs are correct, but also regression tests that safeguard
-against performance degradation. However, modern computers are extremely complicated
+against performance degradation.
+However, modern computers and operating systems are extremely complicated
 systems that do many things under the hood~\cite{HP5e}.
+
+Some examples of things that modern hardware can do:
 For example, modern CPUs feature frequency scaling, thread rescheduling,
 out of order execution,
 and variations in memory layout (ASLR, swapping, etc.), the exact NUMA architecture
@@ -87,10 +90,54 @@ Furthermore the operating system may introduce further performance variations
 due to processes like paging virtual memory.
 And then there is environmental factors such as network traffic that may lead to
 further variation. We call all these factors jitter.
-Jitter complicates the accurate and reproducible timing of programs, which we
-need so that we can say that ``this change made my program run faster or slower''.
 
-Figure~\ref{fig:examplebenchmarks} illustrates some of the many behaviors exhibited by benchmark codes.
+The net result of all this complexity is that it becomes difficult to time
+program executions accurately and reproducibly, and it is correspondingly harder
+to judge where a code change made an application run faster or slower.
+
+\subsection{Reducing variation: quiescence}
+
+There is a lot of work to attempt to mitigate all this complexity.
+
+There is a lot of work on machine quiescence, to reduce variation in the performance
+behavior of CPUS. Relevant work exists to
+\TODO{Summarize https://github.com/JuliaCI/BenchmarkTools.jl/blob/60dfe83e5434c87b7311ca5d9f185f45752ed510/doc/linuxtips.md}
+
+\TODO{portability}
+
+- reducing OS jitter to increase data reproducibility
+
+- reducing OS jitter to increase performance
+
+- randomization of  to induce Gaussian timing distributions
+
+- strategies for orchestrating performance counters
+
+\TODO{magic keyword: quiescence}
+There has been a lot of work done about benchmarking in various computational subdisciplines, ranging from high performance computing to embedded systems to compiler design and implementation.
+Most of the existing work has focused on reducing variability in benchmark testing.
+For the most part, the compiler community has focused on approaches that make compilers produces the same executables more reproducibly, such as replay compilation which allows for reproducible binary layouts~\cite{Georges2008}, and low-variability garbage collection in just-in-time compiler virtual machines~\cite{Huang2004}, and randomization of memory layouts in \textsc{Stabilizer}~\cite{Curtsinger2013}. For the most part, systems people have focused on OS-based approaches, such as tickless kernels featuring soft partitioning of cores and threads between application and systems processes~\cite{Akkan2012}.
+
+There are studies specific to studying various factors, such as virtual memory paging~\cite{Oyama2014,Oyama2016}.
+
+Some of this work has even been specifically applied to performance benchmarking \cite{Alcocer2015,Barrett2016}.
+
+Nevertheless, it is not possible to eliminate variation entirely.
+Some quiescence efforts apply only to specific machines, like Tesselation\TODO{cite}...
+Others require you to run on a dedicated operating system, like Nix\TODO{cite}...
+which is fine but may not represent a representative environment under which user
+code is expected to run.
+Furthermore there are problems with measurement bias and error~\cite{Mytkowicz2009}.
+For example, hardware counters may lie to you.
+There is also work on hardware counters. Basically they are problematic unless you know exactly what they are doing. There is a good review of the accuracy of hardware counters describing when they consistently provide overcounts~\cite{Weaver2013}.
+Therefore, it is still necessary to think about statistics.
+Nevertheless it is impossible to eliminate variation
+entirely, and one may even argue that quiescence is not a typical machine
+configuration that users encounter in practice.
+In these cases where there is irreducible jitter we have no choice but to resort to a statistical description of the benchmarking process.
+
+
+\subsection{The statistics of execution times is highly nonnormal}
 
 \begin{figure}
 \centering
@@ -123,45 +170,23 @@ Figure~\ref{fig:examplebenchmarks} illustrates some of the many behaviors exhibi
 \label{fig:examplebenchmarks}
 \end{figure}
 
-There is a lot of work on machine quiescence, to reduce variation in the performance
-behavior of CPUS. Relevant work exists to
+Studies of statistics of repeated benchmarks agree that the distributions observed in practice are highly nonnormal and have large outliers. Some benchmarks even exhibit correlation between consecutive
+timing measurements.
+Some examples of these behaviors can be seen in Figure~\ref{fig:examplebenchmarks}.
+As a result, simple textbook statistical tests like $t$-tests and $F$-ratios,
+which assume normality, have poor statistical power~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}.
+There have been several approaches to this problem.
+The first approach is to remove outliers~\cite{Rehn2015}\TODO{and loc. cit.} to improve Gaussianity.
+However, we have encountered some benchmarks which exhibit bimodal or multimodal
+statistics. It is unclear that automated outlier removal can restore the ability
+to use Gaussian statistics for these benchmarks without introducing significant bias.
+The second approach is to use biased variances to correct for non-Gaussianity~\cite{Mytkowicz2009}\TODO{check citation}.
+However, this approach is used primarily when we expect the statistics to be nearly Gaussian,
+and so there will be benchmarks for which this approach may fail to correct for
+non-Gaussianity.
+A third approach is to use robust statistics such as the median as a location parameter~\cite{Mytkowicz2009}, the interquartile range as a dispersion parameter~\cite{Mytkowicz2009}, or the medcouple for measuring skewness~\cite{Rehn2015}.
 
-- reducing OS jitter to increase data reproducibility
-
-- reducing OS jitter to increase performance
-
-- randomization of  to induce Gaussian timing distributions
-
-- strategies for orchestrating performance counters
-
-Nevertheless it is impossible to eliminate variation
-entirely, and one may even argue that quiescence is not a typical machine
-configuration that users encounter in practice.
-In these cases where there is irreducible jitter we have no choice but to resort to a statistical description of the benchmarking process.
-
-In this paper, we present a statistically rigorous approach to performance regression
-testing that is valid in the presence of OS jitter.
-
-\TODO{Summarize https://github.com/JuliaCI/BenchmarkTools.jl/blob/60dfe83e5434c87b7311ca5d9f185f45752ed510/doc/linuxtips.md}
-
-\TODO{portability}
-
-\subsection{What other people have done}
-
-There has been a lot of work done about benchmarking in various computational subdisciplines, ranging from high performance computing to embedded systems to compiler design and implementation. For the most part, the compiler community has focused on approaches that make compilers produces the same executables more reproducibly, such as replay compilation which allows for reproducible binary layouts~\cite{Georges2008}, and low-variability garbage collection in just-in-time compiler virtual machines~\cite{Huang2004}, and randomization of memory layouts in \textsc{Stabilizer}~\cite{Curtsinger2013}. For the most part, systems people have focused on OS-based approaches, such as tickless kernels featuring soft partitioning of cores and threads between application and systems processes~\cite{Akkan2012}.
-
-There are studies specific to studying various factors, such as virtual memory paging~\cite{Oyama2014,Oyama2016}.
-
-Nevertheless it is not possible to eliminate variation entirely.
-
-Some of this work has even been specifically applied to performance benchmarking \cite{Alcocer2015,Barrett2016}.
-
-TODO also work on implementing quiescent environments,
-
-There is also work on hardware counters. Basically they are problematic unless you know exactly what they are doing. There is a good review of the accuracy of hardware counters describing when they consistently provide overcounts~\cite{Weaver2013}.
-
-Studies of statistics of repeated benchmarks agree that the distributions observed in practice are highly nonnormal and has large outliers, which makes it difficult or impossible to apply standard statistical techniques~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}. Some authors have also acknowledged the need to use robust statistics such as the median as a location parameter~\cite{Mytkowicz2009}, the interquartile range as a dispersion parameter~\cite{Mytkowicz2009}, or the medcouple for measuring skewness~\cite{Rehn2015}.
-However, existing statistical methodologies try to maintain the same testing frameworks using confidence intervals, $t$-tests and $F$-ratios developed for Gaussian statistics, but with outlier removal~\cite{Rehn2015} or biased estimaters to correct for skewness.
+Figure~\ref{fig:examplebenchmarks} illustrates some of the many behaviors exhibited by benchmark codes.
 
 There is also some work on software tools for the statistical analysis of benchmarks. The Speedup-Test is an R package for analysing benchmark data~\cite{Touati2013}. There is also the framework of Chen et al 2015~\cite{Chen2015}.
 \TODO{Jarrett has more}
@@ -170,10 +195,13 @@ Also common is the assumption that it suffices to ``warm up'' the machine by run
 
 In contrast, we propose to throw non-Gaussianity complete out of the window.
 
-Our methodology for regression benchmarking applies also to other cases, e.g.\ testing for performance differences under different compiler flags~\cite{Mytkowicz2009}
-\TODO{What did Grigori Fursin write about this?}
 
-\section{Methodology}
+In this paper, we present a statistically rigorous approach to performance regression
+testing that is valid in the presence of OS jitter.
+
+
+
+\section{The statistics of timing fluctuations}
 
 We only focus on stateless benchmarks $P_0$, so that in principle, the benchmark program can be run many times, each time producing the same deterministic output. Even though the benchmark program $P_0$ itself may be stateless, its environment---the hardware it runs on, the operating system, and other programs that may also be running on the machine, for example---does carry some state and produces side effects which introduce variations in the runtime of $P_0$.
 
@@ -213,8 +241,9 @@ $f_X(\xi)$ is the probability density function (pdf) associated with the random 
 
 \textbf{Resampled quantities} are denoted with a superscript asterisk, $\cdot^*$. For example, $t^*_1, \dots t^*_m$ is a resample of $t_1, \dots t_n$.
 
+
 \label{sec:statmodel}
-\subsection{A simple statistical model for nondeterministic execution times in the presence of OS jitter}
+\subsection{A microscopic model for timing variations}
 
 In this work we adopt a simple model for program execution. Assume for the moment that we have only a single instruction pipeline and that the user's program $P_0$ may be specified as a single sequence of instructions, which we shall denote
 
@@ -263,6 +292,11 @@ Statistically speaking, there must exist some critical time $t_{<P}$ for which t
 
 Secondly, there are special case limiting behaviors that make a lot of sense. For example, if there is only $N_f = 1$ factor of OS jitter, then $X^{(1)}$ follows a binomial distribution with $N$ samples and proability $p^{(1)}$. If furthermore the number of instructions $N$ is sufficiently large, then and there is only $N_f = 1$ factor of OS jitter, then the behavior of $X^{(1)}$ follows a Poisson (exponential) distribution with rate $p^{(1)} N$.\TODO{Fix description of ideal behavior - Andreas points out it's not right} If there are $N_f > 1$ factors of OS jitter, each with identical trigger probability $p^{(i)} = \pi$ and characteristic time scale $\tau^{(i)} = \tau$, then $X = \sum_{i=1}^{N_f} X^{(i)}$ follows an Erlang distribution with shape parameter $k$ and rate $p^{(1)} N$. Of course in practice, few benchmarks obey such idealized behavior, but they are useful limiting cases to bear in mind. Furthermore our model is general enough to cover the wide variety of distributions seen in practice. An important nonideal case is the observation of two or more modes in $f_{t_P}$. Such behavior is consistent with a model $t_P = t_Y Y + t_Z Z$, where $t_Y$ and $t_Z \ne t_Y$ are constants describing a characteristic time scales associated with random variables $Y$ and $Z$ respectively, and $Y$ is an Erlang distribution and $Z$ is a binomial distribution.
 
+\TODO{Do we ever recover Gaussianity?}
+
+
+
+\section{Benchmark methodology}
 
 
 \subsection{A compromise between timer accuracy and jitter determines how many times to run the benchmark}
@@ -327,7 +361,7 @@ Given a timer accuracy $\tau_{acc}$ and a timer precision $\tau_{prec}$, our alg
 \end{enumerate}
 
 
-\subsection{A hypothesis testing approach to regression testing}
+\section{Regression testing as hypothesis testing}
 
 We are now ready to make use of all this probablisitic machinery to describe the statistics of regression benchmarking. Suppose we have a reference program $P$ and a modified program $Q$ which produce the same output when given identical inputs. We now want to know if $P$ is slower than $Q$. Again in a perfectly deterministic universe where there are no OS jitter factors or the starting machine state $\mathcal S$ known with great precision and can be reproduced on demand, then we simply run $P$, time how long it takes, reset the machine back to its starting state $\mathcal S$, and then run $Q$, noting how long it takes to run. However $\mathcal S$ is never known exactly, and even if it were known, it's not clear if
 $\mathcal S$ represents a ``typical'' machine configuration encountered in practice.
@@ -419,8 +453,11 @@ p  = mean(z .> zs) %Compute p-value
 \section{Implementation in Julia}
 
 We have implemented the stastistical ideas described above in a suite of packages available on GitHub under the \href{https://github.com/JuliaCI}{JuliaCI} organization.
-The code is implemented in Julia. Julia is an emerging programming language designed for technical computing, an area where performance considerations are very important.
+The code is implemented in Julia. Julia is a programming language designed for technical computing, an area where performance considerations are very important.
 The code is available freely on GitHub under the MIT ``Expat'' License.
+
+Some of this code we describe is also for ease of convenience for benchmarking
+the entire Julia base library, which we do not discuss here.
 
 \begin{itemize}
 
@@ -439,17 +476,14 @@ Julia developers can simply write a suitable comment on issues and pull requests
 
 \end{itemize}
 
-\subsection{Some simple benchmarks}
+
+
+\section{Results on sample benchmarks}
 
 For discussion purposes we wrote some simple benchmarks and mock codes that exhibit regressions. They are:
 
 \TODO{describe}
 
-
-
-\section{Results on some Julia benchmarks}
-
-Samples generally appears to follow a Gamma distribution, plus modes at points of high-frequency noise (large `xᵢ`s). The modality/phase structure of the samples seems to be a property inherent to each benchmark, . This could be interpreted as either the benchmark is characteristically vulnerable to certain sources of noise, or that the benchmark triggers certain sources of noise with high frequency.
 
 
 \begin{figure}[!t]
@@ -467,11 +501,22 @@ We can't distinguish between a regression of the first kind and nonstationary ji
 
 Another problem is that we see correlation in some benchmarks. Our bootstrap framework can't really deal with that.
 
+We also don't deal with the multicore case. It is possible to extend our statistical
+model to multiple noninteracting instruction streams, describing embarrassingly
+parallel programs. However, we expect that interactions between streams, such as
+resource contention or scheduling dependencies, will lead to entirely new
+statistics which may not be adequately captured in our current model.
+
+
 
 \section{Conclusion}
 
-\TODO{The conclusion goes here.}
+Our methodology can be applied in other comparisons of program performance
+outside of regression testing, such as testing for performance differences under different compiler flags~\cite{Mytkowicz2009}.
+\TODO{What did Grigori Fursin write about this?}
 
+
+\TODO{The conclusion goes here.}
 
 
 \section*{Acknowledgment}
