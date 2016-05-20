@@ -136,72 +136,13 @@ testing that is valid in the presence of OS jitter.
 
 \TODO{portability}
 
-\subsection{What other people have done}
 
-There has been a lot of work done about benchmarking in various computational subdisciplines, ranging from high performance computing to embedded systems to compiler design and implementation. For the most part, the compiler community has focused on approaches that make compilers produces the same executables more reproducibly, such as replay compilation which allows for reproducible binary layouts~\cite{Georges2008}, and low-variability garbage collection in just-in-time compiler virtual machines~\cite{Huang2004}, and randomization of memory layouts in \textsc{Stabilizer}~\cite{Curtsinger2013}. For the most part, systems people have focused on OS-based approaches, such as tickless kernels featuring soft partitioning of cores and threads between application and systems processes~\cite{Akkan2012}.
-
-There are studies specific to studying various factors, such as virtual memory paging~\cite{Oyama2014,Oyama2016}.
-
-Nevertheless it is not possible to eliminate variation entirely.
-
-Some of this work has even been specifically applied to performance benchmarking \cite{Alcocer2015,Barrett2016}.
-
-TODO also work on implementing quiescent environments,
-
-There is also work on hardware counters. Basically they are problematic unless you know exactly what they are doing. There is a good review of the accuracy of hardware counters describing when they consistently provide overcounts~\cite{Weaver2013}.
-
-Studies of statistics of repeated benchmarks agree that the distributions observed in practice are highly nonnormal and has large outliers, which makes it difficult or impossible to apply standard statistical techniques~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}. Some authors have also acknowledged the need to use robust statistics such as the median as a location parameter~\cite{Mytkowicz2009}, the interquartile range as a dispersion parameter~\cite{Mytkowicz2009}, or the medcouple for measuring skewness~\cite{Rehn2015}.
-However, existing statistical methodologies try to maintain the same testing frameworks using confidence intervals, $t$-tests and $F$-ratios developed for Gaussian statistics, but with outlier removal~\cite{Rehn2015} or biased estimaters to correct for skewness.
-
-There is also some work on software tools for the statistical analysis of benchmarks. The Speedup-Test is an R package for analysing benchmark data~\cite{Touati2013}. There is also the framework of Chen et al 2015~\cite{Chen2015}.
-\TODO{Jarrett has more}
-
-Also common is the assumption that it suffices to ``warm up'' the machine by running the benchmark a few times, after which the becchmarks will run at peak performance. On the contrary, practically no benchmarks exhibit such simplistic behavior~\cite{Barrett2016}, exhibiting instead a wide variety of behaviors, a few of which are shown in Figure~\ref{fig:examplebenchmarks}.
-
-In contrast, we propose to throw non-Gaussianity complete out of the window.
-
-Our methodology for regression benchmarking applies also to other cases, e.g.\ testing for performance differences under different compiler flags~\cite{Mytkowicz2009}
-\TODO{What did Grigori Fursin write about this?}
 
 \section{Methodology}
 
 We only focus on stateless benchmarks $P_0$, so that in principle, the benchmark program can be run many times, each time producing the same deterministic output. Even though the benchmark program $P_0$ itself may be stateless, its environment---the hardware it runs on, the operating system, and other programs that may also be running on the machine, for example---does carry some state and produces side effects which introduce variations in the runtime of $P_0$.
 
 In order to classify regressions in the presence of these variations, we need to develop a rigorous statistical model for our runtime that incorporates them.
-
-\subsection{Definitions and notation}
-
-There are several kinds of variables we use that have dimensions of time, and for clarity we define all of them here.
-
-A \textbf{benchmark execution time} $t$ is the smallest time scale, referring to how long it takes to execute the benchmark once. We normally do not time single executions directly.
-
-A \textbf{timing measurement} $T_i$ is the smallest experimentally measured quantity, consisting of multiple executions $n_i$ of the benchmark. The subscript $i$ labels each timing. From each timing measurement we can derive an indirect measurement of $t_i = T_i/n_i$.
-
-A \textbf{trial} is the largest grouping of time, referring to a collection of timing measurements. When we talk about multiple trials, $k_{trials}$ is the number of trials and each trial is indexed by an embraced subscript, $\cdot^{\{i\}}$. The $i$th trial has $k^{\{i\}}$ timings, and $T^{\{i\}}_j$ is the $j$th timing in the $i$th trial.
-
-$\tau_{acc}$ - accuracy of system timer
-
-$\tau_{prec}$ - precision of system timer
-
-$\tau_{budget}$ - time budget to do linear search
-
-A \textbf{program} is composed of a series of \textbf{instructions}. $P_0$, $P$ and $Q$ denote programs that we want to run as benchmarks. $I^{[i]}_{P_0}$ is the $i$th instruction in program $P_0$, where each instruction is indexed by a bracketed superscript, $\cdot^{[i]}$. $D^{[i]}_{P}$ is a delay instruction, which we define precisely in Section~\ref{sec:statmodel}.
-
-$\tau^{(i)}$ is a time scale associated with a \textbf{noise factor}, as defined below. Noise factors are indexed by parenthesized superscripts, $\cdot^{(i)}$.
-
-$x^{(i)[j]}$ is the number of times noise factor $i$ was triggered in delay instruction $j$. $X_P^{(i)}$ is the total number of times noise factor $i$ was triggered in running the program $P$.
-
-$\epsilon$ is a \textbf{measurement error} and has units of time.
-
-$\epsilon^{(i)[j]} = x^{(i)[j]} \tau^{(i)}$ is the time delay caused by noise factor $i$ in instruction $j$. $E_P^{(i)}$ is the total cumulative time delay caused by noise factor $i$ over the course of running the program $P$.
-
-$\nu(t)$ is an oracle function which, given a time estimate, returns the number of executions per measurement.
-
-$f_X(\xi)$ is the probability density function (pdf) associated with the random variable $X$. $\int_{x}^{x+\delta x} f_X(\xi) d\xi$
-
-\textbf{Estimated quantities} are denoted with a hat, $\hat\cdot$. For example, $\hat t_{min}$ is the estimated value for the minimum value of the benchmark execution time.
-
-\textbf{Resampled quantities} are denoted with a superscript asterisk, $\cdot^*$. For example, $t^*_1, \dots t^*_m$ is a resample of $t_1, \dots t_n$.
 
 \label{sec:statmodel}
 \subsection{A simple statistical model for nondeterministic execution times in the presence of OS jitter}
@@ -210,50 +151,48 @@ In this work we adopt a simple model for program execution. Assume for the momen
 
 $P_0$ = \begin{tabular}{|c|c|c|c|c|}
 \hline
-$I^{[1]}$ & $I^{[2]}$ & $\dots$ & $I^{[N]}$ \tabularnewline
+$I_1$ & $I_2$ & $\cdots$ & $I_N$ \tabularnewline
 \hline
 \end{tabular}
 
-Assume that each instruction $I^{[i]}$ takes exactly time $\tau^{[i]}$ to execute.
-In an idealized universe, the user program $P_0$ will execute in time $t_{P_0} = \sum_{i=1}^N \tau^{[i]}$ clock cycles. However, due to any of the external factors mentioned above, the CPU or operating system may choose to do things other than one of the instructions $I^{[k]}$. We model this by saying that the idealized program $P_0$ is transformed into a new program $P$, which consists of the same sequence of instructions from the user's program $P_0$, but interleaved with delay instructions $D^{[j]}$:
+Assume that each instruction $I_i$ takes exactly time $T_{I_i}$ to execute.
+In an idealized universe, the user program $P_0$ will execute in time $T_{P_0} = \sum_{i=1}^N T_{I_i}$ clock cycles. However, due to any of the external factors mentioned above, the CPU or operating system may choose to do things other than one of the instructions $I_k$. We model this by saying that the idealized program $P_0$ is transformed into a new program $P$, which consists of the same sequence of instructions from the user's program $P_0$, but interleaved with delay instructions $D_j$:
 
-$P$ = \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
+$P$ = \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|}
 \hline
-$D^{[1]}$ & $I^{[1]}$ & $D^{[2]}$ & $I^{[2]}$ &
-$\cdots$ & $D^{[N]}$ & $I^{[N]}$
+$D_1$ & $I_1$ & $D_2$ & $I_2$ &
+$\cdots$ & $D_N$ & $I_N$ & $D_{N+1}$
 \tabularnewline
 \hline
 \end{tabular}
 
-The delay instructions model branching to instructions that do not belong to $P_0$, but are nevertheless run because they are triggered by the environment of $P_0$, such as its operating system or hardware state, or even a network interrupt. The run time of $P$ is no longer $t_{P_0}$, but
-$t_P = t_{P_0} + \sum_{j=1}^N D^{[j]}$ instead.
+The delay instructions model branching to instructions that do not belong to $P_0$, but are nevertheless run because they are triggered by the environment of $P_0$, such as its operating system or hardware state, or even a network interrupt. The run time of $P$ is no longer $T_{P_0}$, but
+$T_P = T_{P_0} + \sum_{j=1}^{N+1} D_j$ instead.
 
-Further imagine that this machine has $N_f$ independent noise factors, which we label in superscripts $\cdot^{(i)}$. Each noise factor can trigger with probability $p^{(i)}$, and each time the noise factor is triggered, it will take time $\tau^{(i)}$ to run. Let $x^{(i)[j]} \in \{0, 1\}$ indicate whether the $i$th jitter factor is triggered each time in the random delay instruction $D^{[j]}$. Then the run time of $D^{[j]}$ is
-$\tau_{D^{[j]}} = \sum_{i=1}^{N_f} x^{(i)}_j \tau^{(i)}$ and is no longer deterministic, but instead a random variable.
+Further imagine that this machine has $N_f$ independent factors of OS (environmental) jitter, which we label in superscripts $\cdot^{(i)}$. Each jitter factor can trigger with probability $p^{(i)}$, and each time the jitter factor is triggered, it will take time $T^{(i)}$ to run. Let $x^{i}_j \in \{0, 1\}$ indicate whether the $i$th jitter factor is triggered each time in the random delay instruction $R_j$. Then the run time of $D_j$ is
+$T_{D_j} = \sum_{i=1}^{N_f} x^{(i)}_j T^{(i)}$ and is no longer deterministic, but instead a random variable.
 
 Putting all these things together, we get
 
 \begin{equation}
-t_P = t_{P_0} + \sum_{j=1}^N \sum_{i=1}^{N_f} x^{(i)[j]} \tau^{(i)}
-= t_{P_0} + \sum_{i=1}^{N_f} X_P^{(i)} \tau^{(i)},
+T_P = T_{P_0} + \sum_{j=1}^{N+1} \sum_{i=1}^{N_f} x^{(i)}_j T^{(i)}
+= T_{P_0} + \sum_{i=1}^{N_f} X_P^{(i)} T^{(i)},
 \end{equation}
 %
-where $X_P^{(i)} = \sum_{j=1}^N x^{(i)[j]}$ is the number of times the noise factor $i$ was triggered when running the program $P$.
+where $X_P^{(i)} = \sum_{j=1}^{N+1} x^{(i)}_j$ is the number of times the jitter factor $i$ was triggered when running the program $P$.
 
-The randomness has a natural interpretation in the Kolmogorov formulation of probability. We could in principle gather so much information about the exact microscopic configuration $\mathcal S$ of a computer, down to its precise hardware specification, operating temperature, and all the bits in its I/O streams, caches, buffers, and storage devices, and so on, that we could know deterministically how long each delay instruction $D^{[j]}$ would take to run. If we could also restore the computer to the precise state $\mathcal S$ after running the program $P$, then the computer will execute $P$ again with exactly the same, deterministic run time. In practice, however, we never know $\mathcal S$ with enough detail to describe $t_P$ deterministically. Instead, we must make do with an imprecise specification of the machine state, saying instead that the machine state $\mathcal S$ is only known to belong to some set $S$ of possible machine states belonging to the sample space $\Omega$. In this sense, our probabilistic description of program execution is reminiscent of the microcanonical ensemble in statistical mechanics.
+The randomness has a natural interpretation in the Kolmogorov formulation of probability. We could in principle gather so much information about the exact microscopic configuration $\mathcal S$ of a computer, down to its precise hardware specification, operating temperature, and all the bits in its I/O streams, caches, buffers, and storage devices, and so on, that we could know deterministically how long each delay instruction $D_j$ would take to run. If we could also restore the computer to the precise state $\mathcal S$ after running the program $P$, then the computer will execute $P$ again with exactly the same, deterministic run time. In practice, however, we never know $\mathcal S$ with enough detail to describe $T_P$ deterministically. Instead, we must make do with an imprecise specification of the machine state, saying instead that the machine state $\mathcal S$ is only known to belong to some set $S$ of possible machine states belonging to the sample space $\Omega$. In this sense, our probabilistic description of program execution is reminiscent of the microcanonical ensemble in statistical mechanics.
 
 Let's note a few properties of this model:
 
-First of all, $t_P \ge t_{P_0}$ since each characteristic time $\tau^{(i)} > 0$ is positive. Therefore $P$ always takes more time to execute than $P_0$.
+First of all, $T_P \ge T_{P_0}$ since each characteristic time $T^{(i)} > 0$ is positive. Therefore $P$ always takes more time to execute than $P_0$.
 For this model to apply, we must assume that jitter that causes \textit{faster}
 execution times, such as frequency boosting, are absent and disabled with the
-appropriate hardware and OS configuration settings~\cite{benchmarktoolschecklist}. We have equality $T_P = T_{P_0}$
-for machine states $\mathcal S_0$ that trigger no jitter whatsoever. Such a machine state may not exist, but nevertheless there must exist some state (or collection of states) $\mathcal S_<$ that minimizes $t_P$ to some value, $t_{<P}$, invoking the fewest possible jitter factors that lead to smallest possible increase in execution time over $t_{P_0}$.
-Statistically speaking, there must exist some critical time $t_{<P}$ for which the probability density function (pdf) $f_{t_P}(\xi)$ of $t_P$ of obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi < t_{<P}$.
+appropriate hardware and OS configuration settings. We have equality $T_P = T_{P_0}$
+for machine states $\mathcal S_0$ that trigger no jitter whatsoever. Such a machine state may not exist, but nevertheless there must exist some state (or collection of states) $\mathcal S_*$ that minimizes $T_P$ to some value, $T^*_P$, invoking the fewest possible jitter factors that lead to smallest possible increase in execution time over $T_{P_0}$.
+Statistically speaking, there must exist some critical time $T^*_P$ for which the probability density function (pdf) $f_P(t)$ of $T_P$ of obeys $f_P(t) = 0 \; \forall \; t < T^*_P$.
 
-Secondly, there are special case limiting behaviors that make a lot of sense. For example, if there is only $N_f = 1$ factor of OS jitter, then $X^{(1)}$ follows a binomial distribution with $N$ samples and proability $p^{(1)}$. If furthermore the number of instructions $N$ is sufficiently large, then and there is only $N_f = 1$ factor of OS jitter, then the behavior of $X^{(1)}$ follows a Poisson (exponential) distribution with rate $p^{(1)} N$.\TODO{Fix description of ideal behavior - Andreas points out it's not right} If there are $N_f > 1$ factors of OS jitter, each with identical trigger probability $p^{(i)} = \pi$ and characteristic time scale $\tau^{(i)} = \tau$, then $X = \sum_{i=1}^{N_f} X^{(i)}$ follows an Erlang distribution with shape parameter $k$ and rate $p^{(1)} N$. Of course in practice, few benchmarks obey such idealized behavior, but they are useful limiting cases to bear in mind. Furthermore our model is general enough to cover the wide variety of distributions seen in practice. An important nonideal case is the observation of two or more modes in $f_{t_P}$. Such behavior is consistent with a model $t_P = t_Y Y + t_Z Z$, where $t_Y$ and $t_Z \ne t_Y$ are constants describing a characteristic time scales associated with random variables $Y$ and $Z$ respectively, and $Y$ is an Erlang distribution and $Z$ is a binomial distribution.
-
-
+Secondly, there are special case limiting behaviors that make a lot of sense. For example, if there is only $N_f = 1$ factor of OS jitter, then $X^{(1)}$ follows a binomial distribution with $N$ samples and proability $p^{(1)}$. If furthermore the number of instructions $N$ is sufficiently large, then and there is only $N_f = 1$ factor of OS jitter, then the behavior of $X^{(1)}$ follows a Poisson (exponential) distribution with rate $p^{(1)} N$. If there are $N_f > 1$ factors of OS jitter, each with identical trigger probability $p^{(i)} = \pi$ and characteristic time scale $T^(i) = \tau$, then $X = \sum_{i=1}^{N_f} X^{(i)}$ follows an Erlang distribution with shape parameter $k$ and rate $p^{(1)} N$. Of course in practice, few benchmarks obey such idealized behavior, but they are useful limiting cases to bear in mind. Furthermore our model is general enough to cover the wide variety of distributions seen in practice. An important nonideal case is the observation of two or more modes in $f_P$. Such behavior is consistent with a model $T_P = T_Y Y + T_Z Z$, where $T_Y$ and $T_Z \ne T_Y$ are constants describing a characteristic time scales associated with random variables $Y$ and $Z$ respectively, and $Y$ is an Erlang distribution and $Z$ is a binomial distribution.
 
 \subsection{A compromise between timer accuracy and jitter determines how many times to run the benchmark}
 
@@ -263,32 +202,59 @@ A common rule of thumb used in practice is to repeat the benchmark enough times,
 
 Nominally it looks like the relative accuracy of this process should be 1 μs/10s = $10^{-7}$. However, the longer you run the program the more OS jitter you will pick up in the timing. Different benchmarks pick up different jitter. For example memory heavy benchmarks may pick up more cache misses while I/O heavy benchmarks may pick up more hard disk latency. So in practice you want to run the benchmark long enough to minimize timer accuracy error while not pick up too much jitter, and a hard rule of thumb like 5--20 seconds may be too much or not enough.
 
-Some benchmarking libraries, like Haskell's criterion~\cite{criterion},
+Some papers
+\TODO{who?}
 advocate a linear search methodology to choose the optimal $n$ where you keep increasing the number of repetitions linearly up to a fixed upper bound, say 1 minute, then do a linear regression to find which region starts to exhibit linear scaling with the number of repetitions. However, a common error in these descriptions is that they tend to also include many data points with total times comparable or less than the timer accuracy. Actually we should throw all of these away because having many inaccurate points biases the least squares search. Or maybe we should do instead weighted least squares so that the regression knows something about error bars. In practice throwing away the short runs suffices. Also you don't want to have too many data points with very long run times because you may start to trigger new jitter factors with longer characteristic time scales.
 
 Let's justify the linear search strategy. Let $h$ be the timer accuracy, $n_1, n_2, ..., n_k$ be a sequence for the number of repetitions $n$ to be tried, and $T_j$ be the execution time measured when the number of repetitions is $n_j$. We assume that the measured execution time can be decomposed into
 
 \begin{equation}
     \label{eq:linsearch}
-    T_j(n_j) = n_j \tau_{true} + \epsilon + \sum_{i=1}^{N_f} X_j^{(i)} \tau^{(i)}
+    T_j(n_j) = n_j \tau + h + \sum_{i=1}^{N_f} X_j^{(i)} T^{(i)}
 \end{equation}
 %
-where $\tau_{true}$ is the true benchmark execution time. If the last two terms
-are constant then a linear regression will have slope $\tau_{true}$ and intercept $\epsilon + \sum_{i=1}^{N_f} X_j^{(i)} \tau^{(i)}$. But $\epsilon$ is not deterministic. Furthermore, the jitter term will also grow with $n_j$ and this complicates the analysis.
-However, if we assume that $\epsilon$ is independent of $n_j$ and that each $X_j^{(i)} = O(n_j)$, then by definition, there then exist positive constants $M^{(i)} > 0$ such that for all sufficiently large $n_j$, $X_j^{(i)} < M^{(i)} n_j$, in which case the observed gradient is $\tau_{obs} = \tau_{true} + \sum_i M^{(i)} > \tau_{true}$\footnote{If we have instead that $X_j^{(i)} = o(n_j)$, then the gradient asympotitically is just $\tau_{true}$}.
+where $\tau$ is the true execution time for the benchmark. If the last two terms
+are constant then a linear regression will have slope $\tau$ and intercept $h + \sum_{i=1}^{N_f} X_P^{(i)} T^{(i)}$. But $h$ is not deterministic. Furthermore, the jitter term will also grow with $n_j$ and this complicates the analysis.
+However, if we assume that $h$ is independent of $n_j$ and that each $X_j^{(i)} = O(n_j)$, then by definition, there then exist positive constants $M^{(i)} > 0$ such that for all sufficiently large $n_j$, $X_j^{(i)} < M^{(i)} n_j$, in which case the observed gradient is $\tau^* = \tau + \sum_i M^{(i)} > \tau$\footnote{If we have instead that $X_j^{(i)} = o(n_j)$, then the gradient asympotitically is just $\tau$}.
 
 \begin{figure}
 \centering
 \includegraphics[width=0.45\textwidth]{experiments/images/fmanytrials_wide}
-\caption{$t_j = T_j(n)/n$ for many repeated linear scans for a particular benchmark, where $T_j$ is defined in \eqref{eq:linsearch}. Each curve denotes a different linear scan. Note the large spikes produced by jitter.}
+\caption{$T_j(n)/n$ for many repeated linear scans for a particular benchmark, where $T_j$ is defined in \eqref{eq:linsearch}. Each curve denotes a different linear scan. Note the large spikes produced by jitter.}
 \label{fig:scaling}
 \end{figure}
 
-In practice, we observe that there are some benchmarks that pick up jitter factors with very large time scales. An example of such a benchmark is shown in Figure~These occurrences can be explained in several ways in our model. The simplest way is to posit some factor $l$ for which $\tau^{(l)} = O(n_j \tau_{true}) = O(n_j)$ and $X_j^{(i)}(n) = H(n - n^\ddagger)$,
+In practice, we observe that there are some benchmarks that pick up jitter factors with very large time scales. An example of such a benchmark is shown in Figure~These occurrences can be explained in several ways in our model. The simplest way is to posit some factor $l$ for which $T^{(l)} = O(n_j \tau) = O(n_j)$ and $X_j^{(i)}(n) = H(n - n^\ddagger)$,
 where $H$ is the Heaviside step function. The existence of such a factor produces a discontinuity in the gradient at $n^\ddagger$. In practice, some caution must be taken to avoid triggering such a jitter factor.
 
 We therefore recommend a truncated linear regression trimming all runs lasting less than the timer accuracy of 1 μs.
 \TODO{This is not the correct description of what we actually do}
+
+
+\subsection{Tuning experimental procedure to fit the benchmark}
+
+Given a benchmarkable program $P$ and a time budget $\tau_{budget}$, we'd like to define $n$, the number of executions of $P$ to perform for each timing measurement, such that a trial of our experiment...
+
+\begin{itemize}
+    \item ...produces timing estimates as close to the lower bound $t_{min}$ as possible
+    \item ...minimizes the variance between timing estimates
+    \item ...maximizes the number of timing measurements we are able to obtain under the constraint of $\tau_{budget}$
+\end{itemize}
+
+Given a timer accuracy $\tau_{acc}$ and a timer precision $\tau_{prec}$, our algorithm for tuning $n$ is as follows:
+
+\begin{enumerate}
+\item For $n \in \{1...\tau_{acc}\}$, measure the amount of time it takes to perform $n$ executions of $P$. The result of this step is a collection of timing measurements $T_n$ for all $n$.
+\item From the derived timing estimates $t_i = T_i / i$, select the minimum timing estimate $\hat{t}_{min}$.
+\item To obtain $n$, plug $\hat{t}_{min}$ into an oracle function $\nu(t_i) \to n_i$. Given $\tau_{acc}$ and $\tau_{prec}$, the properties of $\nu(t)$ are as follows:
+\begin{itemize}
+    \item $\nu(\tau_{prec}) \approx \tau_{acc}$
+    \item $\nu(\tau_{acc}) \approx \text{small} (\sim 10)$
+    \item $\nu(t \gg \tau_{acc}) \approx 1$
+    \item $\frac{d\nu}{dt}\big|_{t \approx \tau_{prec}} = \text{close to zero}$
+    \item free of discontinuities \TODO{how to say this correctly since the range is discretized}
+\end{itemize}
+\end{enumerate}
 
 
 \subsection{A hypothesis testing approach to regression testing}
@@ -299,19 +265,19 @@ $\mathcal S$ represents a ``typical'' machine configuration encountered in pract
 We are thus inexorably led to consider instead the statistical question of whether
 
 \begin{equation}
-\Delta t = t_Q - t_P
-= (t_{<P} - t_{<Q}) + \sum_{i=1}^{N_f} (X^{(i)}_P - X^{(i)}_Q) \tau^{(i)}
+\Delta T = T_Q - T_P
+= (T^*_P - T^*_Q) + \sum_{i=1}^{N_f} (X^{(i)}_P - X^{(i)}_Q) T^{(i)}
 \end{equation}
 %
 is statistically positive.
 
-What we need to do now is to distinguish the constant factor $t_{<P} - t_{<Q}$, the part we care about, from the second term, representing differences in noise triggers.
+What we need to do now is to distinguish the constant factor $T^*_P - T^*_Q$, the part we care about, from the second term, representing differences in OS jitter triggers.
 
 \TODO{... SKIP SOME STEPS ...}
 
 \subsection{Hypothesis tests for two kinds of regressions}
 
-It turns out that there are two kinds of regressions that can be described in our framework, as shown in Figure~\ref{fig:regressionkinds}. The first kind of regression is defined by a statistically significant change in location parameters such as the mean, median, minimum, or trimmed mean. The probability density $f_{t_Q}$ is shifted to the right of $f_{t_P}$. The second kind of regression is defined by a statistically significant change in dispersion parameters such as the standard deviation or interquartile range. The probability density $f_{t_Q}$ is more spread out than $f_{t_P}$. This kind of regression has no deterministic counterpart.
+It turns out that there are two kinds of regressions that can be described in our framework, as shown in Figure~\ref{fig:regressionkinds}. The first kind of regression is defined by a statistically significant change in location parameters such as the mean, median, minimum, or trimmed mean. The probability density $f_Q$ is shifted to the right of $f_P$. The second kind of regression is defined by a statistically significant change in dispersion parameters such as the standard deviation or interquartile range. The probability density $f_Q$ is more spread out than $f_P$. This kind of regression has no deterministic counterpart.
 
 \begin{figure}
 \centering
@@ -381,8 +347,7 @@ Figure~\ref{fig:locationmeasures} show the various kinds of behavior different l
 \label{fig:locationmeasures}
 \end{figure}
 
-Hypothesis testing based on location measures are sensitive to non-stationary OS jitter, for example if there is some jitter factor $i$ such that $X^{(i)}_P = 1$ while $X^{(i)}_Q = 0$ determistically. There is a fundamental definition problem in this situation. If we acknowledge that factor $i$ is always triggered once every time program $P$ runs but not in $Q$, then we could could fold the contribution of factor $i$ into the definition of $t_{<P}$, recognizing that it is not possible to run $P$ without triggering factor $i$. However, it is impossible to distinguish statistically between this case and non-stationary jitter, i.e.\ jitter that changes the machine's behavior for a time period longer than, say, the combined run times of $P$ and $Q$. For example, the OS may decide to start paging virtual memory to disk halfway through running $P$, which continues all throughout the time when the user runs $Q$. Another possibility is that the machine running the benchmark encounters an unusally high level of network traffic when running $P$ and $Q$, for example if the machine is suffering a DDoS attack. The only way to detect this kind of nonstationary noise is to run $P$ and $Q$ enough times so that the combined run time exceeds the characteristic time scale for this jitter. However, in practice this may require benchmarks to run for unacceptably long times.
-
+Hypothesis testing based on location measures are sensitive to non-stationary OS jitter, for example if there is some jitter factor $i$ such that $X^{(i)}_P = 1$ while $X^{(i)}_Q = 0$ determistically. There is a fundamental definition problem in this situation. If we acknowledge that factor $i$ is always triggered once every time program $P$ runs but not in $Q$, then we could could fold the contribution of factor $i$ into the definition of $T^*_P$, recognizing that it is not possible to run $P$ without triggering factor $i$. However, it is impossible to distinguish statistically between this case and non-stationary jitter, i.e.\ jitter that changes the machine's behavior for a time period longer than, say, the combined run times of $P$ and $Q$. For example, the OS may decide to start paging virtual memory to disk halfway through running $P$, which continues all throughout the time when the user runs $Q$. Another possibility is that the machine running the benchmark encounters an unusally high level of network traffic when running $P$ and $Q$, for example if the machine is suffering a DDoS attack. The only way to detect this kind of nonstationary noise is to run $P$ and $Q$ enough times so that the combined run time exceeds the characteristic time scale for this jitter. However, in practice this may require benchmarks to run for unacceptably long times.
 
 \subsection{Choice of dispersion parameter}
 
