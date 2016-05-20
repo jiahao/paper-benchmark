@@ -301,6 +301,32 @@ We therefore recommend a truncated linear regression trimming all runs lasting l
 \TODO{This is not the correct description of what we actually do}
 
 
+\subsection{Tuning experimental procedure to fit the benchmark}
+
+Given a benchmarkable program $P$ and a time budget $\tau_{budget}$, we'd like to define $n$, the number of executions of $P$ to perform for each timing measurement, such that a trial of our experiment...
+
+\begin{itemize}
+    \item ...produces timing estimates as close to the lower bound $t_{min}$ as possible
+    \item ...minimizes the variance between timing estimates
+    \item ...maximizes the number of timing measurements we are able to obtain under the constraint of $\tau_{budget}$
+\end{itemize}
+
+Given a timer accuracy $\tau_{acc}$ and a timer precision $\tau_{prec}$, our algorithm for tuning $n$ is as follows:
+
+\begin{enumerate}
+\item For $n \in \{1...\tau_{acc}\}$, measure the amount of time it takes to perform $n$ executions of $P$. The result of this step is a collection of timing measurements $T_n$ for all $n$.
+\item From the derived timing estimates $t_i = T_i / i$, select the minimum timing estimate $\hat{t}_{min}$.
+\item To obtain $n$, plug $\hat{t}_{min}$ into an oracle function $\nu(t_i) \to n_i$. Given $\tau_{acc}$ and $\tau_{prec}$, the properties of $\nu(t)$ are as follows:
+\begin{itemize}
+    \item $\nu(\tau_{prec}) \approx \tau_{acc}$
+    \item $\nu(\tau_{acc}) \approx \text{small} (\sim 10)$
+    \item $\nu(t \gg \tau_{acc}) \approx 1$
+    \item $\frac{d\nu}{dt}\big|_{t \approx \tau_{prec}} = \text{close to zero}$
+    \item free of discontinuities \TODO{how to say this correctly since the range is discretized}
+\end{itemize}
+\end{enumerate}
+
+
 \subsection{A hypothesis testing approach to regression testing}
 
 We are now ready to make use of all this probablisitic machinery to describe the statistics of regression benchmarking. Suppose we have a reference program $P$ and a modified program $Q$ which produce the same output when given identical inputs. We now want to know if $P$ is slower than $Q$. Again in a perfectly deterministic universe where there are no OS jitter factors or the starting machine state $\mathcal S$ known with great precision and can be reproduced on demand, then we simply run $P$, time how long it takes, reset the machine back to its starting state $\mathcal S$, and then run $Q$, noting how long it takes to run. However $\mathcal S$ is never known exactly, and even if it were known, it's not clear if
