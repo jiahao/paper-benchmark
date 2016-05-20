@@ -247,7 +247,7 @@ Let's note a few properties of this model:
 First of all, $t_P \ge t_{P_0}$ since each characteristic time $\tau^{(i)} > 0$ is positive. Therefore $P$ always takes more time to execute than $P_0$.
 For this model to apply, we must assume that jitter that causes \textit{faster}
 execution times, such as frequency boosting, are absent and disabled with the
-appropriate hardware and OS configuration settings~\cite{basebenchmarkschecklist}. We have equality $T_P = T_{P_0}$
+appropriate hardware and OS configuration settings~\cite{benchmarktoolschecklist}. We have equality $T_P = T_{P_0}$
 for machine states $\mathcal S_0$ that trigger no jitter whatsoever. Such a machine state may not exist, but nevertheless there must exist some state (or collection of states) $\mathcal S_<$ that minimizes $t_P$ to some value, $t_{<P}$, invoking the fewest possible jitter factors that lead to smallest possible increase in execution time over $t_{P_0}$.
 Statistically speaking, there must exist some critical time $t_{<P}$ for which the probability density function (pdf) $f_{t_P}(\xi)$ of $t_P$ of obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi < t_{<P}$.
 
