@@ -97,25 +97,25 @@ Figure~\ref{fig:examplebenchmarks} illustrates some of the many behaviors exhibi
 
 \begin{subfigure}{0.22\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
+    \includegraphics[width=\textwidth]{figures/fig1/simple_branchsum_fast}
     \caption{TODO Simple variation}
 \end{subfigure}%
 ~
 \begin{subfigure}{0.22\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
+    \includegraphics[width=\textwidth]{figures/fig1/bimodal_branchsum}
     \caption{Bimodal distribution}
 \end{subfigure}
 
 \begin{subfigure}{0.22\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_sqralloc}
+    \includegraphics[width=\textwidth]{figures/fig1/drift_manyallocs_slow}
     \caption{Systematic drift}
 \end{subfigure}
 ~
 \begin{subfigure}{0.22\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_sqralloc}
+    \includegraphics[width=\textwidth]{figures/fig1/bimodal_drift_sumindex}
     \caption{TODO More crazy?}
 \end{subfigure}
 
@@ -289,7 +289,7 @@ However, if we assume that $\epsilon$ is independent of $n_j$ and that each $X_j
 
 \begin{figure}
 \centering
-\includegraphics[width=0.45\textwidth]{experiments/images/fmanytrials_wide}
+\includegraphics[width=0.45\textwidth]{figures/fig2/linear_scan_branchsum_no_recurse}
 \caption{$t_j = T_j(n)/n$ for many repeated linear scans for a particular benchmark, where $T_j$ is defined in \eqref{eq:linsearch}. Each curve denotes a different linear scan. Note the large spikes produced by jitter.}
 \label{fig:scaling}
 \end{figure}
@@ -352,18 +352,6 @@ It turns out that there are two kinds of regressions that can be described in ou
 \begin{figure}
 \centering
 
-\begin{subfigure}{0.22\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
-    \caption{TODO regression of the first kind}
-\end{subfigure}%
-~
-\begin{subfigure}{0.22\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
-    \caption{TODO regression of the second kind}
-\end{subfigure}
-
 \caption{Regressions of the first and second kinds. TODO legend.}
 \label{fig:regressionkinds}
 \end{figure}
@@ -388,32 +376,8 @@ Figure~\ref{fig:locationmeasures} show the various kinds of behavior different l
 
 \begin{figure}
 \centering
-
-\begin{subfigure}{0.22\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
-    \caption{TODO mean}
-\end{subfigure}%
-~
-\begin{subfigure}{0.22\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_branchsum}
-    \caption{TODO median}
-\end{subfigure}
-
-\begin{subfigure}{0.22\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_sqralloc}
-    \caption{TODO minimum}
-\end{subfigure}
-~
-\begin{subfigure}{0.22\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{experiments/images/mean_repeated_sqralloc}
-    \caption{TODO trimmed mean}
-\end{subfigure}
-
-\caption{Variations in location measures on some benchmark.}
+\includegraphics[width=\textwidth]{figures/fig3/location_estimators_sumindex}
+\caption{Variations in location measures on the ``sumindex'' benchmark. Green ``●'' is the mean, brown ``■'' is the trimmed mean, Black ``x'' is the median, and blue ``▲'' is the minimum.}
 \label{fig:locationmeasures}
 \end{figure}
 
@@ -491,9 +455,9 @@ Samples generally appears to follow a Gamma distribution, plus modes at points o
 \begin{figure}[!t]
 \centering
 \TODOFIG{Some clusters}
-%\includegraphics[width=2.5in]{myfigure}
-\caption{Clustering of Julia benchmarks.}
-\label{fig:benchclusters}
+\includegraphics[width=2.5in]{figures/fig4/kde_pdf_sumindex}
+\caption{PDF of all ``sumindex'' trials overlaid.}
+\label{fig:pdfsumindex}
 \end{figure}
 
 

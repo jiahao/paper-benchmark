@@ -62,7 +62,6 @@ function branchsum_fast(n)
     return x
 end
 
-
 function branchsum_slow(n)
     x = 1
     if isodd(n)
@@ -81,6 +80,14 @@ function branchsum_slow(n)
                 x += branchsum_slow(i)
             end
         end
+    end
+    return x
+end
+
+function branchsum_no_recurse(n)
+    x = 1
+    for i in 1:n
+       x += ifelse(iseven(i), -1, 1)
     end
     return x
 end
@@ -126,12 +133,13 @@ const suite = BenchmarkGroup()
 const A = rand(MersenneTwister(1), 100)
 
 suite[:pushall!]      = @benchmarkable pushall!(Float64[], $A) evals=16
-suite[:pushall_fast!] = @benchmarkable pushall_fast!(Float64[], $A) evals=10
-suite[:pushall_slow!] = @benchmarkable pushall_slow!(Float64[], $A) evals=165
+suite[:pushall_fast!] = @benchmarkable pushall_fast!(Float64[], $A) evals=165
+suite[:pushall_slow!] = @benchmarkable pushall_slow!(Float64[], $A) evals=10
 
-suite[:branchsum]      = @benchmarkable branchsum(50) evals=190
-suite[:branchsum_fast] = @benchmarkable branchsum_fast(50) evals=200
-suite[:branchsum_slow] = @benchmarkable branchsum_slow(50) evals=107
+suite[:branchsum]            = @benchmarkable branchsum(50) evals=190
+suite[:branchsum_fast]       = @benchmarkable branchsum_fast(50) evals=200
+suite[:branchsum_slow]       = @benchmarkable branchsum_slow(50) evals=107
+suite[:branchsum_no_recurse] = @benchmarkable branchsum_no_recurse(10) evals=1000
 
 suite[:sumindex]      = @benchmarkable sumindex($A) evals=460
 suite[:sumindex_fast] = @benchmarkable sumindex_fast($A) evals=947
