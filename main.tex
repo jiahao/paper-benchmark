@@ -73,6 +73,7 @@ exhibiting small false positive and false negative errors despite highly nonnorm
 
 \IEEEpeerreviewmaketitle
 
+\label{sec:intro}
 \section{The complexity of modern architectures confounds timing measurements}
 
 Developers of high performance applications need not only unit tests that
@@ -245,16 +246,26 @@ $f_X(\xi)$ is the probability density function (pdf) associated with the random 
 \label{sec:statmodel}
 \subsection{A microscopic model for timing variations}
 
-In this work we adopt a simple model for program execution. Assume for the moment that we have only a single instruction pipeline and that the user's program $P_0$ may be specified as a single sequence of instructions, which we shall denote
+The statistics we present can be justified with a simple microscopic
+model of program execution on a computer.
+Assume that we have only a single instruction pipeline
+and that the user's program $P_0$ may be specified as a single sequence of instructions
+$I^{[i]}$, which we shall denote by
 
 $P_0$ = \begin{tabular}{|c|c|c|c|c|}
 \hline
 $I^{[1]}$ & $I^{[2]}$ & $\dots$ & $I^{[N]}$ \tabularnewline
 \hline
-\end{tabular}
+\end{tabular}.
 
 Assume that each instruction $I^{[i]}$ takes exactly time $\tau^{[i]}$ to execute.
-In an idealized universe, the user program $P_0$ will execute in time $t_{P_0} = \sum_{i=1}^N \tau^{[i]}$ clock cycles. However, due to any of the external factors mentioned above, the CPU or operating system may choose to do things other than one of the instructions $I^{[k]}$. We model this by saying that the idealized program $P_0$ is transformed into a new program $P$, which consists of the same sequence of instructions from the user's program $P_0$, but interleaved with delay instructions $D^{[j]}$:
+In an idealized universe, the user program $P_0$ will execute in time
+$t_{P_0} = \sum_{i=1}^N \tau^{[i]}$.
+However, in between any two consecutive instructions $I^{[i]}$ and $I^{[i+1]}$,
+the computer may choose to run zero or more instructions that are \textit{not}
+specified by the user program $P_0$. In effect, the computer has transformed the
+input program $P_0$ into a new program $P$, which interleaves the input sequence
+of instructions $I^{[i]}$ with delay instructions $D^{[i]}$:
 
 $P$ = \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
 \hline
@@ -262,10 +273,13 @@ $D^{[1]}$ & $I^{[1]}$ & $D^{[2]}$ & $I^{[2]}$ &
 $\cdots$ & $D^{[N]}$ & $I^{[N]}$
 \tabularnewline
 \hline
-\end{tabular}
+\end{tabular}.
 
-The delay instructions model branching to instructions that do not belong to $P_0$, but are nevertheless run because they are triggered by the environment of $P_0$, such as its operating system or hardware state, or even a network interrupt. The run time of $P$ is no longer $t_{P_0}$, but
-$t_P = t_{P_0} + \sum_{j=1}^N D^{[j]}$ instead.
+The delay instructions $D^{[i]}$ model fluctuations arising from environmental
+triggers described in Section~\label{ref:intro} such as cache thrashing, thread
+scheduling or even network interrupts. The semantics of $P_0$ and $P$ are
+identical, but $P$ run takes time $t_P = t_{P_0} + \sum_{j=1}^N D^{[j]} > t_{P_0}$
+to run.
 
 Further imagine that this machine has $N_f$ independent noise factors, which we label in superscripts $\cdot^{(i)}$. Each noise factor can trigger with probability $p^{(i)}$, and each time the noise factor is triggered, it will take time $\tau^{(i)}$ to run. Let $x^{(i)[j]} \in \{0, 1\}$ indicate whether the $i$th jitter factor is triggered each time in the random delay instruction $D^{[j]}$. Then the run time of $D^{[j]}$ is
 $\tau_{D^{[j]}} = \sum_{i=1}^{N_f} x^{(i)}_j \tau^{(i)}$ and is no longer deterministic, but instead a random variable.
@@ -382,13 +396,6 @@ What we need to do now is to distinguish the constant factor $t_{<P} - t_{<Q}$, 
 \subsection{Hypothesis tests for two kinds of regressions}
 
 It turns out that there are two kinds of regressions that can be described in our framework, as shown in Figure~\ref{fig:regressionkinds}. The first kind of regression is defined by a statistically significant change in location parameters such as the mean, median, minimum, or trimmed mean. The probability density $f_{t_Q}$ is shifted to the right of $f_{t_P}$. The second kind of regression is defined by a statistically significant change in dispersion parameters such as the standard deviation or interquartile range. The probability density $f_{t_Q}$ is more spread out than $f_{t_P}$. This kind of regression has no deterministic counterpart.
-
-\begin{figure}
-\centering
-
-\caption{Regressions of the first and second kinds. TODO legend.}
-\label{fig:regressionkinds}
-\end{figure}
 
 Let $l_P$ and $l_Q$ be location or dispersion parameters. Then we can write down a hypothesis test
 
