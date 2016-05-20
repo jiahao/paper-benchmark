@@ -148,20 +148,40 @@ testing that is valid in the presence of OS jitter.
 
 \subsection{What other people have done}
 
-There has been a lot of work done about benchmarking in various computational subdisciplines, ranging from high performance computing to embedded systems to compiler design and implementation. For the most part, the compiler community has focused on approaches that make compilers produces the same executables more reproducibly, such as replay compilation which allows for reproducible binary layouts~\cite{Georges2008}, and low-variability garbage collection in just-in-time compiler virtual machines~\cite{Huang2004}, and randomization of memory layouts in \textsc{Stabilizer}~\cite{Curtsinger2013}. For the most part, systems people have focused on OS-based approaches, such as tickless kernels featuring soft partitioning of cores and threads between application and systems processes~\cite{Akkan2012}.
+\TODO{magic keyword: quiescence}
+There has been a lot of work done about benchmarking in various computational subdisciplines, ranging from high performance computing to embedded systems to compiler design and implementation.
+Most of the existing work has focused on reducing variability in benchmark testing.
+For the most part, the compiler community has focused on approaches that make compilers produces the same executables more reproducibly, such as replay compilation which allows for reproducible binary layouts~\cite{Georges2008}, and low-variability garbage collection in just-in-time compiler virtual machines~\cite{Huang2004}, and randomization of memory layouts in \textsc{Stabilizer}~\cite{Curtsinger2013}. For the most part, systems people have focused on OS-based approaches, such as tickless kernels featuring soft partitioning of cores and threads between application and systems processes~\cite{Akkan2012}.
 
 There are studies specific to studying various factors, such as virtual memory paging~\cite{Oyama2014,Oyama2016}.
 
-Nevertheless it is not possible to eliminate variation entirely.
-
 Some of this work has even been specifically applied to performance benchmarking \cite{Alcocer2015,Barrett2016}.
 
-TODO also work on implementing quiescent environments,
-
+Nevertheless, it is not possible to eliminate variation entirely.
+Some quiescence efforts apply only to specific machines, like Tesselation\TODO{cite}...
+Others require you to run on a dedicated operating system, like Nix\TODO{cite}...
+which is fine but may not represent a representative environment under which user
+code is expected to run.
+Furthermore there are problems with measurement bias and error~\cite{Mytkowicz2009}.
+For example, hardware counters may lie to you.
 There is also work on hardware counters. Basically they are problematic unless you know exactly what they are doing. There is a good review of the accuracy of hardware counters describing when they consistently provide overcounts~\cite{Weaver2013}.
+Therefore, it is still necessary to think about statistics.
 
-Studies of statistics of repeated benchmarks agree that the distributions observed in practice are highly nonnormal and has large outliers, which makes it difficult or impossible to apply standard statistical techniques~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}. Some authors have also acknowledged the need to use robust statistics such as the median as a location parameter~\cite{Mytkowicz2009}, the interquartile range as a dispersion parameter~\cite{Mytkowicz2009}, or the medcouple for measuring skewness~\cite{Rehn2015}.
-However, existing statistical methodologies try to maintain the same testing frameworks using confidence intervals, $t$-tests and $F$-ratios developed for Gaussian statistics, but with outlier removal~\cite{Rehn2015} or biased estimaters to correct for skewness.
+
+Studies of statistics of repeated benchmarks agree that the distributions observed in practice are highly nonnormal and have large outliers. Some benchmarks even exhibit correlation between.
+Some examples of these behaviors can be seen in Figure~\ref{fig:examplebenchmarks}.
+As a result, simple textbook statistical tests like $t$-tests and $F$-ratios,
+which assume normality, have poor statistical power~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}.
+There have been several approaches to this problem.
+The first approach is to remove outliers~\cite{Rehn2015}\TODO{and loc. cit.} to improve Gaussianity.
+However, we have encountered some benchmarks which exhibit bimodal or multimodal
+statistics. It is unclear that automated outlier removal can restore the ability
+to use Gaussian statistics for these benchmarks without introducing significant bias.
+The second approach is to use biased variances to correct for non-Gaussianity~\cite{Mytkowicz2009}\TODO{check citation}.
+However, this approach is used primarily when we expect the statistics to be nearly Gaussian,
+and so there will be benchmarks for which this approach may fail to correct for
+non-Gaussianity.
+A third approach is to use robust statistics such as the median as a location parameter~\cite{Mytkowicz2009}, the interquartile range as a dispersion parameter~\cite{Mytkowicz2009}, or the medcouple for measuring skewness~\cite{Rehn2015}.
 
 There is also some work on software tools for the statistical analysis of benchmarks. The Speedup-Test is an R package for analysing benchmark data~\cite{Touati2013}. There is also the framework of Chen et al 2015~\cite{Chen2015}.
 \TODO{Jarrett has more}
