@@ -527,7 +527,7 @@ end
 
 z  = median(Ps) - median(Qs)
 zs = resamp(median, Ps, Qs, nresamp, ntrials)
-p  = mean(z .> zs) %Compute p-value
+p  = mean(z .> zs) #Compute p-value
 \end{lstlisting}
 
 \TODO{Say something about how we are doing m-of-n bootstrap, sampling without replacement, and what are typical resample sizes and number of trials that give us reliable estimates.}
