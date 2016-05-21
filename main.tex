@@ -236,18 +236,43 @@ by collecting multiple timing measurements with increasing number of benchmark
 executions and then estimating the run time from the gradient of the best fit
 line determined using ordinary least squares. However, the least squares approach
 has several deficiencies. First, it is sensitive to outliers (which are detected and
-reported by \lstinline|criterion|). Second, many of the shorter times
-and furthermore may be either an underestimate or overestimate.
+reported by \lstinline|criterion|). Second, many of the shorter timing measurements
+have high relative error when they are close to the intrinsic accuracy of the
+timer, which contribute to the error in estimating the true benchmark run time.
+Third, the linear search process always requires many evaluations of the benchmark.
 
-There is also some work on software tools for the statistical analysis of benchmarks. The Speedup-Test is an R package for analysing benchmark data~\cite{Touati2013}. There is also the framework of Chen et al 2015~\cite{Chen2015}.
+There is also some work on software tools for the statistical analysis of benchmarks.
+The Speedup-Test is an R package for analysing benchmark data~\cite{Touati2013}.
+There is also the framework of Chen et al 2015~\cite{Chen2015}.
 \TODO{Jarrett has more}
 
-This paper presents a fully automated framework for benchmarking that presents:
-In contrast, we propose to throw non-Gaussianity complete out of the window.
 
-In this paper, we present a statistically rigorous approach to performance regression
-testing that is valid in the presence of OS jitter.
+In this paper, we present a fully automated framework for benchmarking that
+combines and extends the best practices noted by previous authors.
 
+\begin{itemize}
+\item
+We present a statistical model explaining why for the most part, fluctuations
+in timing measurements due to enviromental factors are always positive.
+Therefore, the minimum timing measurement produces the best estimate for
+the true execution time of a benchmark when the relative error incurred by
+system timer accuracy is negligible.
+
+\item
+For microbenchmarks, we formulate a search for the optimal number of evaluations
+a benchmark should be run for each timing measurment, striking a balance between
+the error incurred by timer inaccuracy and the delays accrued by environmental
+factors. For regression testing, it is only necessary to perform the search once
+per benchmark, and we regard the search is a preprocessing step to be performed
+separately from the collection of timing measurements used for testing for
+performance regressions.
+
+\item
+We formulate the statistical question of whether a program introduces a performance
+regression relative to another program as a hypothesis test. We propose the
+ratio of observed minima as a test statistic, which is robust to large outliers
+and is well defined for the distributions we expect from our statistical model.
+\end{itemize}
 
 
 \section{The statistics of timing fluctuations}
