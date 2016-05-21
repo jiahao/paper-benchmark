@@ -42,7 +42,7 @@
 \newcommand{\TODO}[1]{\todo[inline]{#1}}
 \newcommand{\TODOFIG}[1]{\missingfigure{#1}}
 
-\title{Is My Code Slower Now? Hypothesis Testing for Performance Regressions}
+\title{Which Program Is Slower? Hypothesis Testing for Performance Regressions}
 
 % author names and affiliations
 % use a multiple column layout for up to three different
@@ -76,20 +76,19 @@ exhibiting small false positive and false negative errors despite highly nonnorm
 \label{sec:intro}
 \section{The complexity of modern architectures confounds timing measurements}
 
-Developers of high performance applications need not only unit tests that
-ensure that their programs are correct, but also regression tests that safeguard
-against performance degradation.
-However, modern computers and operating systems are extremely complicated
-systems that do many things under the hood~\cite{HP5e}. So the environment in
-which a user program runs is constantly fluctating and can cause variations in
-the observed execution time.
+Developers of high performance applications need tests not only for correctness,
+but also to detect performance degradation.
+However, modern computers and operating systems form an extremely complicated
+environment around user programs~\cite{HP5e}.
+Interactions with test programs and their environments produce variations in the
+observed execution time, which complicates the determination of performance
+regressions.
 
-There are many things that could happen, both at the hardware level and at the
-operating system level, that can lead to variability in timing measurements.
-
-Variability can also come from external sources, such as the physical temperature
-of the operating environment, Other examples of va
-- be flooded with I/O requests such as network traffic in a DDoS attack,
+Many external factors conspire to produce variability in timing measurements.
+Physical factors like high ambient temperature may trigger changes in power
+consumption behavior designed to limit heat production. The system running the
+benchmark may also experience many interrupts, e.g.\ many network requests from
+a DDoS attack.
 
 Some things the CPU can do are:
 
@@ -106,7 +105,11 @@ Some things the OS can do are
 
 - virtual memory paging and swapping to disk~\cite{Oyama2014,Oyama2016}.
 
-- address space layout randomization
+- implement security features like address space layout randomization, which
+  makes the memory access behavior of test programs nondeterministic.
+
+Furthermore, seemingly irrelevant configuration parameters like the size of the
+UNIX environment can confound reproducibility. Changing the size of the environment moves the call stack, which is loaded after the environment, which in turn changes the memory alignment of data~\cite{Mytkowicz2009}.
 
 Factors of variation caused by the OS have been referred to as OS jitter or noise.
 
@@ -115,6 +118,9 @@ Some things the compiler for your language can do are
 - determine the layout of binaries
 
 - introduce nondeterminism in memory management
+
+Changing the heap size changes the performance of garbage collections -
+cite - Blackburn et al. [4], Stephen M Blackburn, Perry Cheng, and Kathryn S McKin- ley. Myths and realities: The performance impact of garbage collection. In SIGMETRICS, pages 25–36. ACM Press, 2004.
 
 The net result of all this complexity is that it becomes difficult to time
 program executions accurately and reproducibly, and it is correspondingly harder
@@ -274,6 +280,10 @@ ratio of observed minima as a test statistic, which is robust to large outliers
 and is well defined for the distributions we expect from our statistical model.
 \end{itemize}
 
+We demonstrate that our approach works well for a collection of sample Julia
+benchmarks, correctly detecting regressions with low misclassification rates.
+
+
 
 \section{The statistics of timing fluctuations}
 
@@ -424,6 +434,7 @@ We therefore recommend a truncated linear regression trimming all runs lasting l
 \TODO{This is not the correct description of what we actually do}
 
 
+
 \subsection{Tuning experimental procedure to fit the benchmark}
 
 Given a benchmarkable program $P$ and a time budget $\tau_{budget}$, we'd like to define $n$, the number of executions of $P$ to perform for each timing measurement, such that a trial of our experiment...
@@ -450,6 +461,7 @@ Given a timer accuracy $\tau_{acc}$ and a timer precision $\tau_{prec}$, our alg
 \end{enumerate}
 
 
+
 \section{Regression testing as hypothesis testing}
 
 We are now ready to make use of all this probablisitic machinery to describe the statistics of regression benchmarking. Suppose we have a reference program $P$ and a modified program $Q$ which produce the same output when given identical inputs. We now want to know if $P$ is slower than $Q$. Again in a perfectly deterministic universe where there are no OS jitter factors or the starting machine state $\mathcal S$ known with great precision and can be reproduced on demand, then we simply run $P$, time how long it takes, reset the machine back to its starting state $\mathcal S$, and then run $Q$, noting how long it takes to run. However $\mathcal S$ is never known exactly, and even if it were known, it's not clear if
@@ -467,21 +479,6 @@ is statistically positive.
 What we need to do now is to distinguish the constant factor $t_{<P} - t_{<Q}$, the part we care about, from the second term, representing differences in noise triggers.
 
 \TODO{... SKIP SOME STEPS ...}
-
-\subsection{Hypothesis tests for two kinds of regressions}
-
-It turns out that there are two kinds of regressions that can be described in our framework, as shown in Figure~\ref{fig:regressionkinds}. The first kind of regression is defined by a statistically significant change in location parameters such as the mean, median, minimum, or trimmed mean. The probability density $f_{t_Q}$ is shifted to the right of $f_{t_P}$. The second kind of regression is defined by a statistically significant change in dispersion parameters such as the standard deviation or interquartile range. The probability density $f_{t_Q}$ is more spread out than $f_{t_P}$. This kind of regression has no deterministic counterpart.
-
-Let $l_P$ and $l_Q$ be location or dispersion parameters. Then we can write down a hypothesis test
-
-\begin{subequations}
-\begin{align}
-H_0&: l_P = l_Q \\
-H_1&: l_P < l_Q
-\end{align}
-\end{subequations}
-
-If $H_1$ is true, then we have a performance regression if program $Q$ replaces program $P$.
 
 
 \subsection{Choice of location parameter}
@@ -501,6 +498,7 @@ minimum (blue filled triangles).}
 \end{figure}
 
 Hypothesis testing based on location measures are sensitive to non-stationary OS jitter, for example if there is some jitter factor $i$ such that $X^{(i)}_P = 1$ while $X^{(i)}_Q = 0$ determistically. There is a fundamental definition problem in this situation. If we acknowledge that factor $i$ is always triggered once every time program $P$ runs but not in $Q$, then we could could fold the contribution of factor $i$ into the definition of $t_{<P}$, recognizing that it is not possible to run $P$ without triggering factor $i$. However, it is impossible to distinguish statistically between this case and non-stationary jitter, i.e.\ jitter that changes the machine's behavior for a time period longer than, say, the combined run times of $P$ and $Q$. For example, the OS may decide to start paging virtual memory to disk halfway through running $P$, which continues all throughout the time when the user runs $Q$. Another possibility is that the machine running the benchmark encounters an unusally high level of network traffic when running $P$ and $Q$, for example if the machine is suffering a DDoS attack. The only way to detect this kind of nonstationary noise is to run $P$ and $Q$ enough times so that the combined run time exceeds the characteristic time scale for this jitter. However, in practice this may require benchmarks to run for unacceptably long times.
+
 
 
 \subsection{Choice of dispersion parameter}
@@ -533,6 +531,7 @@ p  = mean(z .> zs) %Compute p-value
 \end{lstlisting}
 
 \TODO{Say something about how we are doing m-of-n bootstrap, sampling without replacement, and what are typical resample sizes and number of trials that give us reliable estimates.}
+
 
 
 \section{Implementation in Julia}
@@ -581,6 +580,7 @@ correlation across multiple trials.}
 \end{figure}
 
 
+
 \section{Limitations of our current approach}
 
 We can't distinguish between a regression of the first kind and nonstationary jitter.
@@ -592,15 +592,17 @@ model to multiple noninteracting instruction streams, describing embarrassingly
 parallel programs. However, we expect that interactions between streams, such as
 resource contention or scheduling dependencies, will lead to entirely new
 statistics which may not be adequately captured in our current model.
-
+Related work:
+Tsafrir et al. [18] describe “input shaking”, a technique for determining the sensitivity of their simulations of parallel systems. (Dan Tsafrir, Keren Ouaknine, and Dror G. Feitelson. Reducing performance evaluation sensitivity and variability by input shaking. In MASCOTS, 2007.)
+Alameldeen and Wood[1] introduce variability in the latency of cache misses in order to alter thread-scheduling bias introduced by simulators that execute multi-threaded workloads. (Alaa R. Alameldeen and David A. Wood. Variability in architectural simulations of multi-threaded workloads. In IEEE HPCA,pages 7–18, 2003.)
 
 
 \section{Conclusion}
 
 Our methodology can be applied in other comparisons of program performance
 outside of regression testing, such as testing for performance differences under different compiler flags~\cite{Mytkowicz2009}.
-\TODO{What did Grigori Fursin write about this?}
 
+\TODO{What did Grigori Fursin write about this?}
 
 \TODO{The conclusion goes here.}
 
