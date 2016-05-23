@@ -42,7 +42,7 @@
 \newcommand{\TODO}[1]{\todo[inline]{#1}}
 \newcommand{\TODOFIG}[1]{\missingfigure{#1}}
 
-\title{Is My Code Slower Now? Hypothesis Testing for Performance Regressions}
+\title{Which Program Is Slower? Hypothesis Testing for Performance Regressions}
 
 % author names and affiliations
 % use a multiple column layout for up to three different
@@ -76,32 +76,66 @@ exhibiting small false positive and false negative errors despite highly nonnorm
 \label{sec:intro}
 \section{The complexity of modern architectures confounds timing measurements}
 
-Developers of high performance applications need not only unit tests that
-ensure that their programs are correct, but also regression tests that safeguard
-against performance degradation.
-However, modern computers and operating systems are extremely complicated
-systems that do many things under the hood~\cite{HP5e}.
+Developers of high performance applications need tests not only for correctness,
+but also to detect performance degradation.
+However, modern computers and operating systems form an extremely complicated
+environment around user programs~\cite{HP5e}.
+Interactions with test programs and their environments produce variations in the
+observed execution time, which complicates the determination of performance
+regressions.
 
-Some examples of things that modern hardware can do:
-For example, modern CPUs feature frequency scaling, thread rescheduling,
+Many external factors conspire to produce variability in timing measurements.
+Physical factors like high ambient temperature may trigger changes in power
+consumption behavior designed to limit heat production. The system running the
+benchmark may also experience many interrupts, e.g.\ many network requests from
+a DDoS attack.
+
+Some things the CPU can do are:
+
+- modern CPUs feature frequency scaling, thread rescheduling,
 out of order execution,
-and variations in memory layout (ASLR, swapping, etc.), the exact NUMA architecture
-of which may lead to effects like cache misses.
-Furthermore the operating system may introduce further performance variations
-due to processes like paging virtual memory.
-And then there is environmental factors such as network traffic that may lead to
-further variation. We call all these factors jitter.
+- clearing instruction pipelines due to failed speculative execution,
+- cache thrashing,
+- For example, hardware counters may lie to you.
+There is also work on hardware counters. Basically they are problematic unless you know exactly what they are doing. There is a good review of the accuracy of hardware counters describing when they consistently provide overcounts~\cite{Weaver2013}.
+
+- provide a timer of insufficient accuracy, leading to measurement bias and error~\cite{Mytkowicz2009}.
+
+Some things the OS can do are
+
+- virtual memory paging and swapping to disk~\cite{Oyama2014,Oyama2016}.
+
+- implement security features like address space layout randomization, which
+  makes the memory access behavior of test programs nondeterministic.
+
+Furthermore, seemingly irrelevant configuration parameters like the size of the
+UNIX environment can confound reproducibility. Changing the size of the environment moves the call stack, which is loaded after the environment, which in turn changes the memory alignment of data~\cite{Mytkowicz2009}.
+
+Factors of variation caused by the OS have been referred to as OS jitter or noise.
+
+Some things the compiler for your language can do are
+
+- determine the layout of binaries
+
+- introduce nondeterminism in memory management
+
+Changing the heap size changes the performance of garbage collections -
+cite - Blackburn et al. [4], Stephen M Blackburn, Perry Cheng, and Kathryn S McKin- ley. Myths and realities: The performance impact of garbage collection. In SIGMETRICS, pages 25–36. ACM Press, 2004.
 
 The net result of all this complexity is that it becomes difficult to time
 program executions accurately and reproducibly, and it is correspondingly harder
 to judge where a code change made an application run faster or slower.
 
+
 \subsection{Reducing variation: quiescence}
 
-There is a lot of work to attempt to mitigate all this complexity.
+There is a lot of work to attempt to mitigate all these sources of variation.
+In some communities the reduction of variation is known as \textbf{quiescence}.
 
-There is a lot of work on machine quiescence, to reduce variation in the performance
-behavior of CPUS. Relevant work exists to
+Each source of variation must be mitigated, often independently of any other
+factor.
+
+Relevant work exists to
 \TODO{Summarize https://github.com/JuliaCI/BenchmarkTools.jl/blob/60dfe83e5434c87b7311ca5d9f185f45752ed510/doc/linuxtips.md}
 
 \TODO{portability}
@@ -110,32 +144,30 @@ behavior of CPUS. Relevant work exists to
 
 - reducing OS jitter to increase performance
 
-- randomization of  to induce Gaussian timing distributions
+At the OS level, one strategy is to purposely construct an OS that provides a
+low-variability environment for program execution, such as NIX\cite{},
+Tesselation\TODO{cite}...
+
+- as tickless kernels featuring soft partitioning of cores and threads between application and systems processes~\cite{Akkan2012}.
+
+\TODO{Paper citing thread scheduling problem in Linux}
+
+At the compiler level, some strategies include
+
+- replay compilation for reproducible binary layouts~\cite{Georges2008}
+
+- randomization of binary layouts to reduce correlation in timing measurmenets,
+in projects like  to induce Gaussian timing distributions
+\textsc{Stabilizer}~\cite{Curtsinger2013}
+
+- low-variability garbage collection in just-in-time compiler virtual machines~\cite{Huang2004}
 
 - strategies for orchestrating performance counters
 
-\TODO{magic keyword: quiescence}
-There has been a lot of work done about benchmarking in various computational subdisciplines, ranging from high performance computing to embedded systems to compiler design and implementation.
-Most of the existing work has focused on reducing variability in benchmark testing.
-For the most part, the compiler community has focused on approaches that make compilers produces the same executables more reproducibly, such as replay compilation which allows for reproducible binary layouts~\cite{Georges2008}, and low-variability garbage collection in just-in-time compiler virtual machines~\cite{Huang2004}, and randomization of memory layouts in \textsc{Stabilizer}~\cite{Curtsinger2013}. For the most part, systems people have focused on OS-based approaches, such as tickless kernels featuring soft partitioning of cores and threads between application and systems processes~\cite{Akkan2012}.
-
-There are studies specific to studying various factors, such as virtual memory paging~\cite{Oyama2014,Oyama2016}.
-
-Some of this work has even been specifically applied to performance benchmarking \cite{Alcocer2015,Barrett2016}.
-
-Nevertheless, it is not possible to eliminate variation entirely.
-Some quiescence efforts apply only to specific machines, like Tesselation\TODO{cite}...
-Others require you to run on a dedicated operating system, like Nix\TODO{cite}...
-which is fine but may not represent a representative environment under which user
-code is expected to run.
-Furthermore there are problems with measurement bias and error~\cite{Mytkowicz2009}.
-For example, hardware counters may lie to you.
-There is also work on hardware counters. Basically they are problematic unless you know exactly what they are doing. There is a good review of the accuracy of hardware counters describing when they consistently provide overcounts~\cite{Weaver2013}.
+The myraid sources of environmental variation must all be mitigated against to
+produce a reproducible state in which to run the benchmark program. In practice,
+it is impossible to eliminate variation entirely~\cite{Alcocer2015,Barrett2016}.
 Therefore, it is still necessary to think about statistics.
-Nevertheless it is impossible to eliminate variation
-entirely, and one may even argue that quiescence is not a typical machine
-configuration that users encounter in practice.
-In these cases where there is irreducible jitter we have no choice but to resort to a statistical description of the benchmarking process.
 
 
 \subsection{The statistics of execution times is highly nonnormal}
@@ -146,13 +178,13 @@ In these cases where there is irreducible jitter we have no choice but to resort
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/simple_branchsum_fast}
-    \caption{TODO Simple variation}
+    \caption{Unimodal variation}
 \end{subfigure}%
 ~
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/bimodal_branchsum}
-    \caption{Bimodal distribution}
+    \caption{Bimodal variation}
 \end{subfigure}
 
 \begin{subfigure}{0.22\textwidth}
@@ -164,41 +196,92 @@ In these cases where there is irreducible jitter we have no choice but to resort
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/bimodal_drift_sumindex}
-    \caption{TODO More crazy?}
+    \caption{More complex behavior}
 \end{subfigure}
 
 \caption{Some typical variations in benchmark timings.}
 \label{fig:examplebenchmarks}
 \end{figure}
 
+A common assumption is that it suffices to ``warm up'' the machine by running
+the benchmark program a few times, after which the becnhmarks will run at peak performance.
+On the contrary, practically no benchmarks exhibit such simplistic behavior.
 Studies of statistics of repeated benchmarks agree that the distributions observed in practice are highly nonnormal and have large outliers. Some benchmarks even exhibit correlation between consecutive
 timing measurements.
-Some examples of these behaviors can be seen in Figure~\ref{fig:examplebenchmarks}.
+Some examples of these behaviors can be seen in Figure~\ref{fig:examplebenchmarks},
+even for the very simple benchmarks that we describe in this paper.
 As a result, simple textbook statistical tests like $t$-tests and $F$-ratios,
-which assume normality, have poor statistical power~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}.
+which assume iid normality, have poor statistical power, as discussed in~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}.
 There have been several approaches to this problem.
 The first approach is to remove outliers~\cite{Rehn2015}\TODO{and loc. cit.} to improve Gaussianity.
-However, we have encountered some benchmarks which exhibit bimodal or multimodal
-statistics. It is unclear that automated outlier removal can restore the ability
-to use Gaussian statistics for these benchmarks without introducing significant bias.
+However, it is unclear whether automated outlier removal can restore the ability
+to use Gaussian statistics for these benchmarks without introducing significant bias,
+particularly when the timing distributions are bimodal or multimodal.
 The second approach is to use biased variances to correct for non-Gaussianity~\cite{Mytkowicz2009}\TODO{check citation}.
-However, this approach is used primarily when we expect the statistics to be nearly Gaussian,
+However, these corrections inherently assume that the statistics are close to Gaussian,
 and so there will be benchmarks for which this approach may fail to correct for
 non-Gaussianity.
-A third approach is to use robust statistics such as the median as a location parameter~\cite{Mytkowicz2009}, the interquartile range as a dispersion parameter~\cite{Mytkowicz2009}, or the medcouple for measuring skewness~\cite{Rehn2015}.
+A third approach is to use robust statistics such as the median as a location parameter~\cite{Mytkowicz2009}, the interquartile range as a dispersion parameter~\cite{Mytkowicz2009}, or the medcouple for measuring skewness~\cite{Rehn2015}. The approach we propose here is most similar to this
+category of analyses, but we focus on the minimum instead.
 
-Figure~\ref{fig:examplebenchmarks} illustrates some of the many behaviors exhibited by benchmark codes.
+An additional consideration for microbenchmarks (benchmarks with very short execution times)
+is the measurement accuracy provided by the system timer.
+Taking one timing measurement of many executions reduces the measurement error,
+much as how the weight of a single sheet of paper can be measured more accurately
+by weighing 500 sheets at once and dividing the measurement by 500,
+as compared with weighing just one sheet directly.
+However, the longer the total run time of a timing measurement, the more likely
+the benchmarking process will incur environmental fluctuations.
+Therefore, commonly used rules of thumb like
+``repeat the benchmark as many times as necessary so that the timing measurement
+is at least 5 seconds'' may not produce the most accurate estimate for the
+execution time of a microbenchmark.
+Microbenchmarking packages like Haskell's \lstinline|criterion|~\cite{criterion}
+compensate for both measurement error and environmental fluctuation
+by collecting multiple timing measurements with increasing number of benchmark
+executions and then estimating the run time from the gradient of the best fit
+line determined using ordinary least squares. However, the least squares approach
+has several deficiencies. First, it is sensitive to outliers (which are detected and
+reported by \lstinline|criterion|). Second, many of the shorter timing measurements
+have high relative error when they are close to the intrinsic accuracy of the
+timer, which contribute to the error in estimating the true benchmark run time.
+Third, the linear search process always requires many evaluations of the benchmark.
 
-There is also some work on software tools for the statistical analysis of benchmarks. The Speedup-Test is an R package for analysing benchmark data~\cite{Touati2013}. There is also the framework of Chen et al 2015~\cite{Chen2015}.
+There is also some work on software tools for the statistical analysis of benchmarks.
+The Speedup-Test is an R package for analysing benchmark data~\cite{Touati2013}.
+There is also the framework of Chen et al 2015~\cite{Chen2015}.
 \TODO{Jarrett has more}
 
-Also common is the assumption that it suffices to ``warm up'' the machine by running the benchmark a few times, after which the becchmarks will run at peak performance. On the contrary, practically no benchmarks exhibit such simplistic behavior~\cite{Barrett2016}, exhibiting instead a wide variety of behaviors, a few of which are shown in Figure~\ref{fig:examplebenchmarks}.
 
-In contrast, we propose to throw non-Gaussianity complete out of the window.
+In this paper, we present a fully automated framework for benchmarking that
+combines and extends the best practices noted by previous authors.
 
+\begin{itemize}
+\item
+We present a statistical model explaining why for the most part, fluctuations
+in timing measurements due to enviromental factors are always positive.
+Therefore, the minimum timing measurement produces the best estimate for
+the true execution time of a benchmark when the relative error incurred by
+system timer accuracy is negligible.
 
-In this paper, we present a statistically rigorous approach to performance regression
-testing that is valid in the presence of OS jitter.
+\item
+For microbenchmarks, we formulate a search for the optimal number of evaluations
+a benchmark should be run for each timing measurment, striking a balance between
+the error incurred by timer inaccuracy and the delays accrued by environmental
+factors. For regression testing, it is only necessary to perform the search once
+per benchmark, and we regard the search is a preprocessing step to be performed
+separately from the collection of timing measurements used for testing for
+performance regressions.
+
+\item
+We formulate the statistical question of whether a program introduces a performance
+regression relative to another program as a hypothesis test. We propose the
+ratio of observed minima as a test statistic, which is robust to large outliers
+and is well defined for the distributions we expect from our statistical model.
+\end{itemize}
+
+We demonstrate that our approach works well for a collection of sample Julia
+benchmarks, correctly detecting regressions with low misclassification rates.
 
 
 
@@ -216,13 +299,13 @@ A \textbf{benchmark execution time} $t$ is the smallest time scale, referring to
 
 A \textbf{timing measurement} $T_i$ is the smallest experimentally measured quantity, consisting of multiple executions $n_i$ of the benchmark. The subscript $i$ labels each timing. From each timing measurement we can derive an indirect measurement of $t_i = T_i/n_i$.
 
-A \textbf{trial} is the largest grouping of time, referring to a collection of timing measurements. When we talk about multiple trials, $k_{trials}$ is the number of trials and each trial is indexed by an embraced subscript, $\cdot^{\{i\}}$. The $i$th trial has $k^{\{i\}}$ timings, and $T^{\{i\}}_j$ is the $j$th timing in the $i$th trial.
+A \textbf{trial} is the largest grouping of time, referring to a collection of timing measurements. When we talk about multiple trials, $k_{\textrm{trials}}$ is the number of trials and each trial is indexed by an embraced subscript, $\cdot^{\{i\}}$. The $i$th trial has $k^{\{i\}}$ timings, and $T^{\{i\}}_j$ is the $j$th timing in the $i$th trial.
 
-$\tau_{acc}$ - accuracy of system timer
+To specify the linear search strategy in Section~\ref{sec:linearsearch}, we require
+$\tau_{\textrm{budget}}$, a time budget to do the linear search,
+$\tau_{\textrm{acc}}$, the accuracy of the system timer, and
+$\tau_{\textrm{prec}}$, the precision of the system timer.
 
-$\tau_{prec}$ - precision of system timer
-
-$\tau_{budget}$ - time budget to do linear search
 
 A \textbf{program} is composed of a series of \textbf{instructions}. $P_0$, $P$ and $Q$ denote programs that we want to run as benchmarks. $I^{[i]}_{P_0}$ is the $i$th instruction in program $P_0$, where each instruction is indexed by a bracketed superscript, $\cdot^{[i]}$. $D^{[i]}_{P}$ is a delay instruction, which we define precisely in Section~\ref{sec:statmodel}.
 
@@ -236,7 +319,7 @@ $\epsilon^{(i)[j]} = x^{(i)[j]} \tau^{(i)}$ is the time delay caused by noise fa
 
 $\nu(t)$ is an oracle function which, given a time estimate, returns the number of executions per measurement.
 
-$f_X(\xi)$ is the probability density function (pdf) associated with the random variable $X$. $\int_{x}^{x+\delta x} f_X(\xi) d\xi$
+$f_X(\xi)$ is the probability density function (pdf) associated with the random variable $X$. $\int_{x}^{x+\delta x} f_X(\xi) d\xi$ is the probability that $x < X < x+\delta x$.
 
 \textbf{Estimated quantities} are denoted with a hat, $\hat\cdot$. For example, $\hat t_{min}$ is the estimated value for the minimum value of the benchmark execution time.
 
@@ -281,6 +364,7 @@ scheduling or even network interrupts. The semantics of $P_0$ and $P$ are
 identical, but $P$ run takes time $t_P = t_{P_0} + \sum_{j=1}^N D^{[j]} > t_{P_0}$
 to run.
 
+We can further decompose
 Further imagine that this machine has $N_f$ independent noise factors, which we label in superscripts $\cdot^{(i)}$. Each noise factor can trigger with probability $p^{(i)}$, and each time the noise factor is triggered, it will take time $\tau^{(i)}$ to run. Let $x^{(i)[j]} \in \{0, 1\}$ indicate whether the $i$th jitter factor is triggered each time in the random delay instruction $D^{[j]}$. Then the run time of $D^{[j]}$ is
 $\tau_{D^{[j]}} = \sum_{i=1}^{N_f} x^{(i)}_j \tau^{(i)}$ and is no longer deterministic, but instead a random variable.
 
@@ -313,6 +397,7 @@ Secondly, there are special case limiting behaviors that make a lot of sense. Fo
 \section{Benchmark methodology}
 
 
+\label{sec:linearsearch}
 \subsection{A compromise between timer accuracy and jitter determines how many times to run the benchmark}
 
 For benchmarks that take very little time to run, it is vital to run it many times so that you avoid measurement error coming from finite timer accuracy. We distinguish between precision and accuracy here: just because the system may provide a timer with nanosecond precision does not automatically guarantee that it has nanosecond \textit{accuracy}. In principle we can calibrate the timer for a given system to measure its accuracy. In practice, we simply assume a given accuracy, say 1 microsecond, and proceed accordingly.
@@ -348,6 +433,8 @@ where $H$ is the Heaviside step function. The existence of such a factor produce
 We therefore recommend a truncated linear regression trimming all runs lasting less than the timer accuracy of 1 μs.
 \TODO{This is not the correct description of what we actually do}
 
+
+
 \label{sec:tuningprotocol}
 \subsection{Tuning experimental procedure to fit the benchmark}
 
@@ -374,6 +461,8 @@ Given a timer accuracy $\tau_{acc}$ and a timer precision $\tau_{prec}$, our alg
 \end{itemize}
 \end{enumerate}
 
+
+
 \section{Regression testing as hypothesis testing}
 
 We are now ready to make use of all this probablisitic machinery to describe the statistics of regression benchmarking. Suppose we have a reference program $P$ and a modified program $Q$ which produce the same output when given identical inputs. We now want to know if $P$ is slower than $Q$. Again in a perfectly deterministic universe where there are no OS jitter factors or the starting machine state $\mathcal S$ known with great precision and can be reproduced on demand, then we simply run $P$, time how long it takes, reset the machine back to its starting state $\mathcal S$, and then run $Q$, noting how long it takes to run. However $\mathcal S$ is never known exactly, and even if it were known, it's not clear if
@@ -391,21 +480,6 @@ is statistically positive.
 What we need to do now is to distinguish the constant factor $t_{<P} - t_{<Q}$, the part we care about, from the second term, representing differences in noise triggers.
 
 \TODO{... SKIP SOME STEPS ...}
-
-\subsection{Hypothesis tests for two kinds of regressions}
-
-It turns out that there are two kinds of regressions that can be described in our framework, as shown in Figure~\ref{fig:regressionkinds}. The first kind of regression is defined by a statistically significant change in location parameters such as the mean, median, minimum, or trimmed mean. The probability density $f_{t_Q}$ is shifted to the right of $f_{t_P}$. The second kind of regression is defined by a statistically significant change in dispersion parameters such as the standard deviation or interquartile range. The probability density $f_{t_Q}$ is more spread out than $f_{t_P}$. This kind of regression has no deterministic counterpart.
-
-Let $l_P$ and $l_Q$ be location or dispersion parameters. Then we can write down a hypothesis test
-
-\begin{subequations}
-\begin{align}
-H_0&: l_P = l_Q \\
-H_1&: l_P < l_Q
-\end{align}
-\end{subequations}
-
-If $H_1$ is true, then we have a performance regression if program $Q$ replaces program $P$.
 
 
 \subsection{Choice of location parameter}
@@ -425,6 +499,7 @@ minimum (blue filled triangles).}
 \end{figure}
 
 Hypothesis testing based on location measures are sensitive to non-stationary OS jitter, for example if there is some jitter factor $i$ such that $X^{(i)}_P = 1$ while $X^{(i)}_Q = 0$ determistically. There is a fundamental definition problem in this situation. If we acknowledge that factor $i$ is always triggered once every time program $P$ runs but not in $Q$, then we could could fold the contribution of factor $i$ into the definition of $t_{<P}$, recognizing that it is not possible to run $P$ without triggering factor $i$. However, it is impossible to distinguish statistically between this case and non-stationary jitter, i.e.\ jitter that changes the machine's behavior for a time period longer than, say, the combined run times of $P$ and $Q$. For example, the OS may decide to start paging virtual memory to disk halfway through running $P$, which continues all throughout the time when the user runs $Q$. Another possibility is that the machine running the benchmark encounters an unusally high level of network traffic when running $P$ and $Q$, for example if the machine is suffering a DDoS attack. The only way to detect this kind of nonstationary noise is to run $P$ and $Q$ enough times so that the combined run time exceeds the characteristic time scale for this jitter. However, in practice this may require benchmarks to run for unacceptably long times.
+
 
 
 \subsection{Choice of dispersion parameter}
@@ -453,10 +528,11 @@ end
 
 z  = median(Ps) - median(Qs)
 zs = resamp(median, Ps, Qs, nresamp, ntrials)
-p  = mean(z .> zs) %Compute p-value
+p  = mean(z .> zs) #Compute p-value
 \end{lstlisting}
 
 \TODO{Say something about how we are doing m-of-n bootstrap, sampling without replacement, and what are typical resample sizes and number of trials that give us reliable estimates.}
+
 
 
 \section{Implementation in Julia}
@@ -534,6 +610,7 @@ correlation across multiple trials.}
 \end{figure}
 
 
+
 \section{Limitations of our current approach}
 
 We can't distinguish between a regression of the first kind and nonstationary jitter.
@@ -545,15 +622,17 @@ model to multiple noninteracting instruction streams, describing embarrassingly
 parallel programs. However, we expect that interactions between streams, such as
 resource contention or scheduling dependencies, will lead to entirely new
 statistics which may not be adequately captured in our current model.
-
+Related work:
+Tsafrir et al. [18] describe “input shaking”, a technique for determining the sensitivity of their simulations of parallel systems. (Dan Tsafrir, Keren Ouaknine, and Dror G. Feitelson. Reducing performance evaluation sensitivity and variability by input shaking. In MASCOTS, 2007.)
+Alameldeen and Wood[1] introduce variability in the latency of cache misses in order to alter thread-scheduling bias introduced by simulators that execute multi-threaded workloads. (Alaa R. Alameldeen and David A. Wood. Variability in architectural simulations of multi-threaded workloads. In IEEE HPCA,pages 7–18, 2003.)
 
 
 \section{Conclusion}
 
 Our methodology can be applied in other comparisons of program performance
 outside of regression testing, such as testing for performance differences under different compiler flags~\cite{Mytkowicz2009}.
-\TODO{What did Grigori Fursin write about this?}
 
+\TODO{What did Grigori Fursin write about this?}
 
 \TODO{The conclusion goes here.}
 
