@@ -40,8 +40,8 @@ function branchsum(n)
         if iseven(i)
             x += -1
         else
-            for i in 1:n
-                x += ifelse(iseven(i), -1, 1)
+            for j in 1:n
+                x += ifelse(iseven(j), -1, 1)
             end
         end
     end

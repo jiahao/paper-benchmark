@@ -66,7 +66,7 @@ function bootstrap(a, b; resamps = 5, trials = 1000)
     return estsamps
 end
 
-function randpairs(iters, populations; threshold = 0.0001, kwargs...)
+function randpairs(iters, populations; threshold = 0.01, verbose = true, kwargs...)
     k = length(populations)
     false_positives = Any[]
     false_negatives = Any[]
@@ -78,10 +78,12 @@ function randpairs(iters, populations; threshold = 0.0001, kwargs...)
         reject = p < threshold
         if reject == (i == j)
             str = "[$i][$m] vs. [$j][$n]: $p"
-            println(str)
+            verbose && print(str)
             if reject
+                verbose && println(" | FALSE POSITIVE")
                 push!(false_positives, str)
             else
+                verbose && println(" | FALSE NEGATIVE")
                 push!(false_negatives, str)
             end
         end
@@ -90,7 +92,7 @@ function randpairs(iters, populations; threshold = 0.0001, kwargs...)
     return total, false_positives, false_negatives
 end
 
-function allpairs(populations; threshold = 0.0001, kwargs...)
+function allpairs(populations; threshold = 0.01, verbose = true, kwargs...)
     false_positives = Any[]
     false_negatives = Any[]
     total = 0
@@ -100,10 +102,12 @@ function allpairs(populations; threshold = 0.0001, kwargs...)
             reject = p < threshold
             if reject == (i == j)
                 str = "[$i][$m] vs. [$j][$n]: $p"
-                println(str)
+                verbose && print(str)
                 if reject
+                    verbose && println(" | FALSE POSITIVE")
                     push!(false_positives, str)
                 else
+                    verbose && println(" | FALSE NEGATIVE")
                     push!(false_negatives, str)
                 end
             end
@@ -113,7 +117,7 @@ function allpairs(populations; threshold = 0.0001, kwargs...)
     return total, false_positives, false_negatives
 end
 
-function basepairs(x, y; threshold = 0.0001, kwargs...)
+function basepairs(x, y; threshold = 0.01, verbose = true, kwargs...)
     total = 0
     # there are no oppportunities for false negatives in our BaseBenchmarks dataset
     false_positives = Any[]
@@ -124,7 +128,7 @@ function basepairs(x, y; threshold = 0.0001, kwargs...)
                 p = sametest(v, y[k]; kwargs...)
                 if p < threshold
                     str = "$(k): $(p)"
-                    println(str)
+                    verbose && println(str)
                     push!(false_positives, str)
                 end
                 total += 1
