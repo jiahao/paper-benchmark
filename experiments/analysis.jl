@@ -52,7 +52,7 @@ function bootstrap(a::BenchmarkTools.Trial, b::BenchmarkTools.Trial; kwargs...)
     return bootstrap(a.times, b.times; kwargs...)
 end
 
-function bootstrap(a, b; resamps = 5, trials = 1000)
+function bootstrap(a, b; resamps = 5, trials = 100)
     estsamps = zeros(trials)
     for i in 1:trials
         x = Inf
@@ -66,7 +66,29 @@ function bootstrap(a, b; resamps = 5, trials = 1000)
     return estsamps
 end
 
-function randpairs(iters, populations; threshold = 0.0001, kwargs...)
+# For a given benchmark trial, estimate the minimum percent shift in the trial's location
+# necessary to achieve a rejection with a given threshold and bootstrap parameters.
+rejectchange(trial::BenchmarkTools.Trial; kwargs...) = rejectchange(trial.times; kwargs...)
+
+function rejectchange(trial; threshold = 0.01, kwargs...)
+    percent_unit = 0.001
+    shift_unit = ceil(Int, minimum(trial) * percent_unit)
+    total_percent = percent_unit
+    trial_shifted = copy(trial)
+    while total_percent < 1.0
+        for i in eachindex(trial_shifted)
+            trial_shifted[i] += shift_unit
+        end
+        if sametest(trial, trial_shifted; kwargs...) < threshold
+            return total_percent
+        else
+            total_percent += percent_unit
+        end
+    end
+    return total_percent
+end
+
+function randpairs(iters, populations; threshold = 0.01, verbose = true, kwargs...)
     k = length(populations)
     false_positives = Any[]
     false_negatives = Any[]
@@ -78,10 +100,12 @@ function randpairs(iters, populations; threshold = 0.0001, kwargs...)
         reject = p < threshold
         if reject == (i == j)
             str = "[$i][$m] vs. [$j][$n]: $p"
-            println(str)
+            verbose && print(str)
             if reject
+                verbose && println(" | FALSE POSITIVE")
                 push!(false_positives, str)
             else
+                verbose && println(" | FALSE NEGATIVE")
                 push!(false_negatives, str)
             end
         end
@@ -90,7 +114,7 @@ function randpairs(iters, populations; threshold = 0.0001, kwargs...)
     return total, false_positives, false_negatives
 end
 
-function allpairs(populations; threshold = 0.0001, kwargs...)
+function allpairs(populations; threshold = 0.01, verbose = true, kwargs...)
     false_positives = Any[]
     false_negatives = Any[]
     total = 0
@@ -100,10 +124,12 @@ function allpairs(populations; threshold = 0.0001, kwargs...)
             reject = p < threshold
             if reject == (i == j)
                 str = "[$i][$m] vs. [$j][$n]: $p"
-                println(str)
+                verbose && print(str)
                 if reject
+                    verbose && println(" | FALSE POSITIVE")
                     push!(false_positives, str)
                 else
+                    verbose && println(" | FALSE NEGATIVE")
                     push!(false_negatives, str)
                 end
             end
@@ -113,7 +139,7 @@ function allpairs(populations; threshold = 0.0001, kwargs...)
     return total, false_positives, false_negatives
 end
 
-function basepairs(x, y; threshold = 0.0001, kwargs...)
+function basepairs(x, y; threshold = 0.01, verbose = true, kwargs...)
     total = 0
     # there are no oppportunities for false negatives in our BaseBenchmarks dataset
     false_positives = Any[]
@@ -124,7 +150,7 @@ function basepairs(x, y; threshold = 0.0001, kwargs...)
                 p = sametest(v, y[k]; kwargs...)
                 if p < threshold
                     str = "$(k): $(p)"
-                    println(str)
+                    verbose && println(str)
                     push!(false_positives, str)
                 end
                 total += 1
@@ -149,9 +175,9 @@ end
 # https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/plotting.jl
 BenchmarkTools.loadplotting()
 
-function trim(t, rcut = 0.05, lcut = rcut)
+function trim(t; rcut = 0.05, lcut = 0.0)
     left = floor(Int, length(t) * lcut)
-    right = floor(Int, length(t) * lcut)
+    right = floor(Int, length(t) * rcut)
     return t[(1 + left):(length(t) - right)]
 end
 
@@ -172,3 +198,17 @@ function evalstransform(trial)
 end
 
 plotall(trials; kwargs...) = for t in trials plot(t; kwargs...) end
+
+# sumindex plot #
+#---------------#
+
+minlessthan(a, b) = minimum(a) < minimum(b)
+
+function splitmean(trials, μ; kwargs...)
+    trimmed = [trim(t; kwargs...) for t in trials]
+    left = trimmed[Bool[mean(t) < μ for t in trimmed]]
+    right = trimmed[Bool[mean(t) >= μ for t in trimmed]]
+    return sort!(left, lt = minlessthan), sort!(right, lt = minlessthan)
+end
+
+const left_sumindex, right_sumindex = splitmean(map(t -> t.times, group[:sumindex]), 190, rcut = 0.10, lcut = 0.05)

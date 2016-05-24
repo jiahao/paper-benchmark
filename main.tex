@@ -422,7 +422,7 @@ However, if we assume that $\epsilon$ is independent of $n_j$ and that each $X_j
 
 \begin{figure}
 \centering
-\includegraphics[width=0.45\textwidth]{figures/fig2/linear_scan_branchsum_no_recurse_wide}
+\includegraphics[width=0.45\textwidth]{figures/fig2/linear_scan_branchsum}
 \caption{$t_j = T_j(n)/n$ for many repeated linear scans for a particular benchmark, where $T_j$ is defined in \eqref{eq:linsearch}. Each curve denotes a different linear scan. Note the large spikes produced by jitter.}
 \label{fig:scaling}
 \end{figure}
@@ -435,6 +435,7 @@ We therefore recommend a truncated linear regression trimming all runs lasting l
 
 
 
+\label{sec:tuningprotocol}
 \subsection{Tuning experimental procedure to fit the benchmark}
 
 Given a benchmarkable program $P$ and a time budget $\tau_{budget}$, we'd like to define $n$, the number of executions of $P$ to perform for each timing measurement, such that a trial of our experiment...
@@ -560,15 +561,44 @@ Julia developers can simply write a suitable comment on issues and pull requests
 
 \end{itemize}
 
-
-
 \section{Results on sample benchmarks}
 
-For discussion purposes we wrote some simple benchmarks and mock codes that exhibit regressions. They are:
+To test our approach, we wrote a small set of mock benchmarks, each of which has additional ``fast'' and ``slow'' implementations:
 
-\TODO{describe}
+\begin{itemize}
+    \item The \lstinline|sumindex(a, inds)| benchmark sums over all \lstinline|a[i]| for all \lstinline|i| in \lstinline|inds|. The normal version uses the array \lstinline|[1, 2, ..., length(a)]| for \lstinline|inds|. This test stresses memory layout via element retrieval.
+    \begin{itemize}
+        \item \lstinline|sumindex_fast(a)| replaces the normal version's \lstinline|inds| array with a range \lstinline|1:length(a)|.
+        \item \lstinline|sumindex_slow(a)| reverses the normal version's \lstinline|inds| array, instead summing over the indices \lstinline|[length(a), ..., 2, 1]|.
+    \end{itemize}
+    \item The \lstinline|pushall!(a, b)| benchmark pushes elements from \lstinline|b| into \lstinline|a| one by one, additionally generating a random number at each iteration (the random number does not affect the output). This test stresses both random number generation and periodic reallocation that occurs as part of Julia's dynamic array resizing algorithm.
+    \begin{itemize}
+        \item \lstinline|pushall_fast!(a, b)| removes the extraneous random number generation at each iteration.
+        \item \lstinline|pushall_slow!(a, b)| generates an additional random number at each iteration.
+    \end{itemize}
+    \item The \lstinline|branchsum(n)| benchmark loops from \lstinline|1| to \lstinline|n|. If the loop variable is even, a counter is decremented. Otherwise, an inner loop is triggered which runs from \lstinline|1| to \lstinline|n|, in which another parity test is performed on the inner loop variable to determine whether to increment or decrement the counter. This test stresses periodically costly branching within loop iterations.
+    \begin{itemize}
+        \item \lstinline|branchsum_fast(n)| lifts the first parity test outside the loop, and uses it as a base case for recursive calls that are triggered within the loop (calls to \lstinline|branchsum_fast(i)| where \lstinline|i| is the loop variable).
+        \item \lstinline|branchsum_slow(n)| is structured similarly to \lstinline|branchsum_fast(n)|, but uses full \lstinline|if|/\lstinline|else| statements whose bodies are the summation expressions, instead of the ternary operators used in \lstinline|branchsum_fast(n)|, whose bodies are only the integers to be summed.
+    \end{itemize}
+    \item The \lstinline|manyallocs(n)| allocates an array of \lstinline|n| elements, where each element is itself an array. The inner array length is determined by a random number from \lstinline|1| to \lstinline|n|, which is regenerated when each new array is constructed. However, the random number generator is reseeded before each generation so that the program is deterministic. This test stresses random number generation and frequent allocations of unpredictable size, even though in reality the lengths are deterministic and uniform.
+    \begin{itemize}
+        \item \lstinline|manyallocs_fast(n)| only generates the inner array length once, before all arrays are constructed.
+        \item \lstinline|manyallocs_slow(n)| constructs each inner array by dynamically resizing it rather than preallocating memory for it, and additionally performs an unnecessary copy of each inner array.
+    \end{itemize}
+\end{itemize}
 
+For every benchmark implementation, 100 experimental trials were performed. Each trial consisted of 10,000 timing measurements, where the number of benchmark executions per measurement was predetermined by the procedure given in \ref{sec:tuningprotocol}.
 
+The artificial regressions and improvements introduced by the ``fast'' and ``slow'' versions of these benchmarks allow us to estimate false negative (incorrect non-rejection of the null hypothesis) and false positive (incorrect rejection of the null hypothesis) rates for our regression detection process. Three separate tests were performed in order to derive these estimates:
+
+\begin{enumerate}
+\item We tested our detection algorithm against every pairwise combination of trials for each benchmark's control, fast, and slow implementations. This corresponds to 90,000 tests per benchmark (10,000 pairwise trial combinations times 9 pairwise implementation combinations). No false negatives or positives were detected.
+\item We tested our detection algorithm against 20 million random pairs of trials, where our population contained all trials of all benchmarks. Again, no false negatives or positives were detected.
+\item We tested our detection algorithm on $\sim$600 benchmarks from the Julia's core benchmark suite, which is implemented in the BaseBenchmarks.jl package. We selected only the benchmarks for which we had the time to collect at least 10,000 timing measurements, which are also the benchmarks in the relevant time scale of the tens of microseconds or lower (microbenchmarks). The false positive rate was 0.056.
+\end{enumerate}
+
+For each test, the threshold of rejection was 0.01 (1\%), the resample size was 5, and the original populations were resampled 1000 times.
 
 \begin{figure}[!t]
 \centering
