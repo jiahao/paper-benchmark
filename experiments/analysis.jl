@@ -52,7 +52,7 @@ function bootstrap(a::BenchmarkTools.Trial, b::BenchmarkTools.Trial; kwargs...)
     return bootstrap(a.times, b.times; kwargs...)
 end
 
-function bootstrap(a, b; resamps = 5, trials = 1000)
+function bootstrap(a, b; resamps = 5, trials = 100)
     estsamps = zeros(trials)
     for i in 1:trials
         x = Inf
@@ -64,6 +64,28 @@ function bootstrap(a, b; resamps = 5, trials = 1000)
         estsamps[i] = x / y
     end
     return estsamps
+end
+
+# For a given benchmark trial, estimate the minimum percent shift in the trial's location
+# necessary to achieve a rejection with a given threshold and bootstrap parameters.
+rejectchange(trial::BenchmarkTools.Trial; kwargs...) = rejectchange(trial.times; kwargs...)
+
+function rejectchange(trial; threshold = 0.01, kwargs...)
+    percent_unit = 0.001
+    shift_unit = ceil(Int, minimum(trial) * percent_unit)
+    total_percent = percent_unit
+    trial_shifted = copy(trial)
+    while total_percent < 1.0
+        for i in eachindex(trial_shifted)
+            trial_shifted[i] += shift_unit
+        end
+        if sametest(trial, trial_shifted; kwargs...) < threshold
+            return total_percent
+        else
+            total_percent += percent_unit
+        end
+    end
+    return total_percent
 end
 
 function randpairs(iters, populations; threshold = 0.01, verbose = true, kwargs...)
@@ -153,9 +175,9 @@ end
 # https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/plotting.jl
 BenchmarkTools.loadplotting()
 
-function trim(t, rcut = 0.05, lcut = rcut)
+function trim(t; rcut = 0.05, lcut = 0.0)
     left = floor(Int, length(t) * lcut)
-    right = floor(Int, length(t) * lcut)
+    right = floor(Int, length(t) * rcut)
     return t[(1 + left):(length(t) - right)]
 end
 
@@ -176,3 +198,17 @@ function evalstransform(trial)
 end
 
 plotall(trials; kwargs...) = for t in trials plot(t; kwargs...) end
+
+# sumindex plot #
+#---------------#
+
+minlessthan(a, b) = minimum(a) < minimum(b)
+
+function splitmean(trials, μ; kwargs...)
+    trimmed = [trim(t; kwargs...) for t in trials]
+    left = trimmed[Bool[mean(t) < μ for t in trimmed]]
+    right = trimmed[Bool[mean(t) >= μ for t in trimmed]]
+    return sort!(left, lt = minlessthan), sort!(right, lt = minlessthan)
+end
+
+const left_sumindex, right_sumindex = splitmean(map(t -> t.times, group[:sumindex]), 190, rcut = 0.10, lcut = 0.05)
