@@ -58,17 +58,25 @@ Email: \{jiahao,jrevels\}@csail.mit.edu}
 \maketitle
 
 \begin{abstract}
-We propose a fully automated method for detecting performance regressions,
-which relieves developers of the complexities of timing programs associated with
-modern hardware and software environments.
-First, we describe a protocol for determining the optimal number of evaluations
-per timing measurement that minimizes both measurement error
-and delays incurred by system fluctuations.
-Second, we formulate a hypothesis testing framework and use the bootstrap
-resampling method for estimating the error distributions needed to describe
-statistical significance and effect sizes.
-We demonstrate that our method performs well on a small collection of Julia benchmarks,
-exhibiting small false positive and false negative errors despite highly nonnormal statistics.
+We propose an automated method for rigorous detection of microbenchmark regressions in the
+presence of timer error, OS jitter and other environmental fluctuations. Unlike similar
+methods, our method does not require a normality assumption on benchmark timing
+distributions, which we show is often an inappropriate assumption to make in practice.
+Additionally, our method respects experimental time constraints by maximizing the number of
+measurements made per trial, rendering it suitable for inclusion in continuous integration
+(CI) pipelines even when applied to relatively large benchmark suites.
+
+The proposed method is comprised of two distinct contributions. First, we describe an
+experimental protocol for predetermining the minimum number of benchmark executions per
+timing measurement required to minimize inter-measurement timing variations. Second, we
+formulate a nonparametric hypothesis test that makes use of the bootstrap resampling method
+to estimate the statistical significance of observed variations in execution time.
+
+We demonstrate our method on a small collection of mock Julia benchmarks, discussing where
+our method succeeds and potential pitfalls. We also discuss a prototype implementation of
+the proposed method that was recently released to aid in the development of the Julia
+language and ecosystem, which has already caught prevented the introduction of 10000-times
+performance regressions into the core language.\TODO{cite Vararg PR}.
 \end{abstract}
 
 \IEEEpeerreviewmaketitle
@@ -76,42 +84,55 @@ exhibiting small false positive and false negative errors despite highly nonnorm
 \label{sec:intro}
 \section{The complexity of modern architectures confounds timing measurements}
 
-Developers of high performance applications need tests not only for correctness,
-but also to detect performance degradation.
-However, modern computers and operating systems form an extremely complicated
-environment around user programs~\cite{HP5e}.
-Interactions with test programs and their environments produce variations in the
-observed execution time, which complicates the determination of performance
-regressions.
+Developers of high performance applications often rely on microbenchmark suites to determine
+how a given change in code impacts program performance. Despite the importance of these
+suites in safeguarding against performance regressions, developers often run and
+interpret them in an ad-hoc manner. The lack of a proper experimental procedure for
+microbenchmarking is dangerous, as it can result in misguided code alterations that damage
+performance instead of improve it.
 
-Many external factors conspire to produce variability in timing measurements.
-Physical factors like high ambient temperature may trigger changes in power
-consumption behavior designed to limit heat production. The system running the
-benchmark may also experience many interrupts, e.g.\ many network requests from
-a DDoS attack.
+A proper experimental procedure for classifying performance changes should emphasize
+reproducibility\cite{Oliveira2014,Kalibera2013}. Unfortunately, modern hardware and
+operating systems present a slew of confounding factors that complicate a developer's
+ability to reason about the reproducibility of user-space application performance
+~\cite{HP5e}. There is a body of work in the literature devoted to identifying these
+factors, including...
 
-Some things the CPU can do are:
+\begin{itemize}
+    \item ...changes in temperature, workload, and power availability that can trigger
+    CPU frequency scaling and variable instruction pipelining behavior.
+    \item ...hardware and software interrupts which can disrupt benchmark execution
+    and timers.
+    \item ...kernel-controlled properties such as thread rescheduling, virtual addressing
+    behavior, and other quirks of memory configuration (paging, swapping, caching, etc.)
+    \cite{Oyama2014,Oyama2016}.
+    \item ...problems with hardware performance counters? \TODO{elaborate/cite this}.
+    \item ...insufficient timer accuracy, which can cause measurement bias and
+    error~\cite{Mytkowicz2009}.
+\end{itemize}
 
-- modern CPUs feature frequency scaling, thread rescheduling,
-out of order execution,
-- clearing instruction pipelines due to failed speculative execution,
-- cache thrashing,
-- For example, hardware counters may lie to you.
-There is also work on hardware counters. Basically they are problematic unless you know exactly what they are doing. There is a good review of the accuracy of hardware counters describing when they consistently provide overcounts~\cite{Weaver2013}.
+The above factors can produce significant variability in timing measurements \TODO{cite}.
+Timing variations due to external factors can have perplexing correlation structures (see
+\TODO{Fig 1}), and can be difficult to distinguish from timing variations due to genuine
+changes in application peformance.
 
-- provide a timer of insufficient accuracy, leading to measurement bias and error~\cite{Mytkowicz2009}.
+\subsection{Reducing variation: quiescence}
 
-Some things the OS can do are
+Many of the external factors of variation listed in \ref{sec:intro}, particular those
+triggered via the kernel, are referred to by the literature as ``OS jitter''. Isolating
+and eliminating OS jitter is a complex endeavor, and research progress on the topic is
+highly OS and hardware dependent. Most techniques for controlling OS jitter revolve around
+specialized kernel configurations and compiler modifications, which generally reside outside
+the scope of the benchmark program. % "and thus can be burdensome to implement in practice." Maybe too harsh?
 
-- virtual memory paging and swapping to disk~\cite{Oyama2014,Oyama2016}.
+% Should we include this? Does this only affect the reproducibility of *data*, or does it
+% also affect the reproducibility of *conclusions*?
+Furthermore, seemingly irrelevant configuration parameters like the size of the UNIX
+environment can confound reproducibility. Changing the size of the environment moves the
+call stack, which is loaded after the environment, which in turn changes the alignment of
+data in memory~\cite{Mytkowicz2009}.
 
-- implement security features like address space layout randomization, which
-  makes the memory access behavior of test programs nondeterministic.
-
-Furthermore, seemingly irrelevant configuration parameters like the size of the
-UNIX environment can confound reproducibility. Changing the size of the environment moves the call stack, which is loaded after the environment, which in turn changes the memory alignment of data~\cite{Mytkowicz2009}.
-
-Factors of variation caused by the OS have been referred to as OS jitter or noise.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Progress Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Some things the compiler for your language can do are
 
@@ -122,12 +143,6 @@ Some things the compiler for your language can do are
 Changing the heap size changes the performance of garbage collections -
 cite - Blackburn et al. [4], Stephen M Blackburn, Perry Cheng, and Kathryn S McKin- ley. Myths and realities: The performance impact of garbage collection. In SIGMETRICS, pages 25–36. ACM Press, 2004.
 
-The net result of all this complexity is that it becomes difficult to time
-program executions accurately and reproducibly, and it is correspondingly harder
-to judge where a code change made an application run faster or slower.
-
-
-\subsection{Reducing variation: quiescence}
 
 There is a lot of work to attempt to mitigate all these sources of variation.
 In some communities the reduction of variation is known as \textbf{quiescence}.
