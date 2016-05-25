@@ -57,14 +57,16 @@ Email: \{jiahao,jrevels\}@csail.mit.edu}
 % make the title area
 \maketitle
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \begin{abstract}
 We propose an automated method for rigorous detection of microbenchmark regressions in the
 presence of timer error, OS jitter and other environmental fluctuations. Unlike similar
-methods, our method does not require a normality assumption on benchmark timing
-distributions, which we show is often an inappropriate assumption to make in practice.
-Additionally, our method respects experimental time constraints by maximizing the number of
-measurements made per trial, rendering it suitable for inclusion in continuous integration
-(CI) pipelines even when applied to relatively large benchmark suites.
+methods, our method does not assume the normality of timing measurement distributions, which
+we show is often an inappropriate assumption in practice. Additionally, our method respects
+experimental time constraints by maximizing the number of measurements made per trial,
+rendering it suitable for inclusion in continuous integration (CI) pipelines even when
+applied to relatively large benchmark suites.
 
 The proposed method is comprised of two distinct contributions. First, we describe an
 experimental protocol for predetermining the minimum number of benchmark executions per
@@ -75,56 +77,73 @@ to estimate the statistical significance of observed variations in execution tim
 We demonstrate our method on a small collection of mock Julia benchmarks, discussing where
 our method succeeds and potential pitfalls. We also discuss a prototype implementation of
 the proposed method that was recently released to aid in the development of the Julia
-language and ecosystem, which has already caught prevented the introduction of 10000-times
-performance regressions into the core language.\TODO{cite Vararg PR}.
+language and ecosystem, which has already caught and prevented several performance
+regressions into the core language.
 \end{abstract}
 
 \IEEEpeerreviewmaketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \label{sec:intro}
 \section{The complexity of modern architectures confounds timing measurements}
 
 Developers of high performance applications often rely on microbenchmark suites to determine
-how a given change in code impacts program performance. Despite the importance of these
-suites in safeguarding against performance regressions, developers often run and
-interpret them in an ad-hoc manner. The lack of a proper experimental procedure for
-microbenchmarking is dangerous, as it can result in misguided code alterations that damage
-performance instead of improve it.
+the impact of code changes on program performance. Despite the importance of these
+suites in safeguarding against performance regressions, developers often run and interpret
+them in an ad-hoc manner. This lack of a rigorous microbenchmarking methodology is
+dangerous, at best wasting developers' time and at worst encouraging misguided code
+alterations that damage performance instead of improve it.
 
-A proper experimental procedure for classifying performance changes should emphasize
-reproducibility\cite{Oliveira2014,Kalibera2013}. Unfortunately, modern hardware and
-operating systems present a slew of confounding factors that complicate a developer's
-ability to reason about the reproducibility of user-space application performance
-~\cite{HP5e}. There is a body of work in the literature devoted to identifying these
-factors, including...
+Ignoring platform-specific bugs, a proper experimental protocol for microbenchmarking should
+allow developers with disparately configured machines to reproducibly arrive at similar
+conclusions, even if the timing measurements themselves will be
+machine-dependent~\cite{Oliveira2014,Kalibera2013}. Unfortunately, modern hardware and
+operating systems present a large number of confounding factors that complicate a
+developer's ability to reason about the reproducibility of user-space application
+performance~\cite{HP5e}. There is a body of work in the literature devoted to identifying
+these factors, examples of which include...
 
 \begin{itemize}
     \item ...changes in temperature, workload, and power availability that can trigger
-    CPU frequency scaling and variable instruction pipelining behavior.
-    \item ...hardware and software interrupts which can disrupt benchmark execution
-    and timers.
-    \item ...kernel-controlled properties such as thread rescheduling, virtual addressing
-    behavior, and other quirks of memory configuration (paging, swapping, caching, etc.)
-    \cite{Oyama2014,Oyama2016}.
+    CPU frequency scaling.
+    \item ...hardware and software interrupts which can disrupt timers and benchmark
+    execution.
+    \item ...kernel-controlled behaviors such as thread rescheduling, virtual addressing,
+    and other quirks of memory configuration (paging, swapping, caching,
+    etc.)~\cite{Oyama2014,Oyama2016}.
+    \item ...the ability of the CPU to pipeline instructions
     \item ...problems with hardware performance counters? \TODO{elaborate/cite this}.
     \item ...insufficient timer accuracy, which can cause measurement bias and
     error~\cite{Mytkowicz2009}.
 \end{itemize}
 
-The above factors can produce significant variability in timing measurements \TODO{cite}.
-Timing variations due to external factors can have perplexing correlation structures (see
-\TODO{Fig 1}), and can be difficult to distinguish from timing variations due to genuine
-changes in application peformance.
+Timing variations due to the above external factors can exhibit perplexing correlation
+structures (see \TODO{Fig 1}), which make them difficult to distinguish from timing
+variations due to genuine changes in application peformance.
 
-\subsection{Reducing variation: quiescence}
+In the following sections, we outline existing approaches, establish the problems these
+approaches
 
-Many of the external factors of variation listed in \ref{sec:intro}, particular those
-triggered via the kernel, are referred to by the literature as ``OS jitter''. Isolating
-and eliminating OS jitter is a complex endeavor, and research progress on the topic is
-highly OS and hardware dependent. Most techniques for controlling OS jitter revolve around
-specialized kernel configurations and compiler modifications, which generally reside outside
-the scope of the benchmark program. % "and thus can be burdensome to implement in practice." Maybe too harsh?
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\label{sec:existingapproaches}
+\section{Existing approaches}
+
+\subsection{Environmental Approaches}
+Many of the external variation factors listed above, particular those triggered via the
+kernel, are referred to by the literature as ``OS jitter''. Isolating and eliminating OS
+jitter is a complex endeavor, and research progress on achieving system quiescence is highly
+OS, hardware and version dependent. Most techniques for controlling jitter revolve around
+specialized kernel configurations, compiler modifications, or VM tuning.
+
+Among the compiler-specific techniques are efforts in memory randomization \cite{Curtsinger2013},
+....
+
+Most studies we found on VM performance were JVM-specific. ~\cite{Georges2008}
+
+Research on OS-level configuration is unsurprisingly skewed towards Linux-based systems,
+with a few papers
 % Should we include this? Does this only affect the reproducibility of *data*, or does it
 % also affect the reproducibility of *conclusions*?
 Furthermore, seemingly irrelevant configuration parameters like the size of the UNIX
@@ -132,7 +151,10 @@ environment can confound reproducibility. Changing the size of the environment m
 call stack, which is loaded after the environment, which in turn changes the alignment of
 data in memory~\cite{Mytkowicz2009}.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Progress Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Statistical Approaches}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Some things the compiler for your language can do are
 
@@ -140,15 +162,7 @@ Some things the compiler for your language can do are
 
 - introduce nondeterminism in memory management
 
-Changing the heap size changes the performance of garbage collections -
-cite - Blackburn et al. [4], Stephen M Blackburn, Perry Cheng, and Kathryn S McKin- ley. Myths and realities: The performance impact of garbage collection. In SIGMETRICS, pages 25–36. ACM Press, 2004.
-
-
-There is a lot of work to attempt to mitigate all these sources of variation.
-In some communities the reduction of variation is known as \textbf{quiescence}.
-
-Each source of variation must be mitigated, often independently of any other
-factor.
+Changing the heap size changes the performance of garbage collections - cite - Blackburn et al. [4], Stephen M Blackburn, Perry Cheng, and Kathryn S McKin- ley. Myths and realities: The performance impact of garbage collection. In SIGMETRICS, pages 25–36. ACM Press, 2004.
 
 Relevant work exists to
 \TODO{Summarize https://github.com/JuliaCI/BenchmarkTools.jl/blob/60dfe83e5434c87b7311ca5d9f185f45752ed510/doc/linuxtips.md}
@@ -184,6 +198,7 @@ produce a reproducible state in which to run the benchmark program. In practice,
 it is impossible to eliminate variation entirely~\cite{Alcocer2015,Barrett2016}.
 Therefore, it is still necessary to think about statistics.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{The statistics of execution times is highly nonnormal}
 
@@ -193,28 +208,28 @@ Therefore, it is still necessary to think about statistics.
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/simple_branchsum_fast}
-    \caption{Unimodal variation}
+    \caption{Benchmark 1: Unimodal}
 \end{subfigure}%
 ~
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/bimodal_branchsum}
-    \caption{Bimodal variation}
+    \caption{Benchmark 2: Bimodal}
 \end{subfigure}
 
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/drift_manyallocs_slow}
-    \caption{Systematic drift}
+    \caption{Benchmark 3: Skewed}
 \end{subfigure}
 ~
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/bimodal_drift_sumindex}
-    \caption{More complex behavior}
+    \caption{Benchmark 4: Bimodal + Skewed}
 \end{subfigure}
 
-\caption{Some typical variations in benchmark timings.}
+\caption{Mean distributions for 4 different benchmarks}
 \label{fig:examplebenchmarks}
 \end{figure}
 
@@ -298,7 +313,7 @@ and is well defined for the distributions we expect from our statistical model.
 We demonstrate that our approach works well for a collection of sample Julia
 benchmarks, correctly detecting regressions with low misclassification rates.
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{The statistics of timing fluctuations}
 
@@ -340,6 +355,7 @@ $f_X(\xi)$ is the probability density function (pdf) associated with the random 
 
 \textbf{Resampled quantities} are denoted with a superscript asterisk, $\cdot^*$. For example, $t^*_1, \dots t^*_m$ is a resample of $t_1, \dots t_n$.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \label{sec:statmodel}
 \subsection{A microscopic model for timing variations}
