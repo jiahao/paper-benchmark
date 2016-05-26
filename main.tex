@@ -146,10 +146,10 @@ performance instead of improve it.
 \label{sec:challenges}
 \section{Microbenchmarking is hard}
 
-Before we discuss the difficulties of microbenchmarking, we should state the criteria one
-should keep in mind when analyzing existing approaches. To emphasize the practical
-consequences of these criteria, we present them in terms of the features that an ``ideal''
-microbenchmarking framework might provide.
+Before we discuss the difficulties of microbenchmarking, we should state the criteria we use
+to analyze existing approaches. To emphasize the practical consequences of these criteria,
+we present them in terms of the features that an ``ideal'' microbenchmarking framework might
+provide.
 
 The ideal microbenchmarking framework would \textit{produce reproducible measurements} while
 \textit{respecting user time constraints}. It would \textit{automatically identify
@@ -169,9 +169,9 @@ individually or combined - are not sufficient to meet our microbenchmarking crit
 
 Modern hardware and operating systems present a large number of confounding factors that
 complicate a developer's ability to reason about variations in user-space application
-performance~\cite{HP5e}. There is a body of literature devoted to identifying these factors,
-examples of which include...
+performance~\cite{HP5e}. These factors include...
 
+\TODO{cite/elaborate on these where necessary}
 \begin{itemize}
     \item ...changes in temperature, workload, and power availability that can trigger
     CPU frequency scaling.
@@ -180,21 +180,16 @@ examples of which include...
     \item ...kernel-controlled behaviors such as thread rescheduling, virtual addressing,
     and other quirks of memory configuration (paging, swapping, caching,
     etc.)~\cite{Oyama2014,Oyama2016}.
-    \item ...the ability of the CPU to pipeline instructions
-    \item ...problems with hardware performance counters? \TODO{elaborate/cite this}.
     \item ...insufficient timer accuracy, which can cause measurement bias and
     error~\cite{Mytkowicz2009}.
 \end{itemize}
 
-Timing variations due to the above external factors can exhibit perplexing correlation
-structures (see \ref{fig:meandistributions}), which make them difficult to distinguish from
-timing variations due to genuine changes in application peformance.
-
-Many of the factors listed above, particular those triggered via the kernel, are referred
-to by the literature as ``OS jitter''. Isolating and eliminating OS jitter is a complex
-endeavor, as research progress on achieving system quiescence is highly platform-dependent.
-Most techniques for controlling jitter revolve around specialized kernel configurations,
-compiler modifications, or VM tuning.
+Many of these factors, particular those triggered via the kernel, are called ``OS jitter''.
+Since timing variations due to OS jitter are difficult to distinguish from timing variations
+due to genuine changes in application peformance, there is a wide corpus of literature
+regarding the isolation and elimination of OS jitter. Research progress in this area is
+highly platform-dependent, and mostly revolves around specialized kernel configurations,
+compiler modifications, and VM tuning.
 
 \TODO{discuss existing ``environmental'' research, see notes in comments}
 
@@ -268,7 +263,7 @@ portability and thus decrease the likelihood of adoption.
     \caption{Benchmark 4: Bimodal + Skewed}
 \end{subfigure}
 
-\caption{Mean distributions for 4 different benchmarks}
+\caption{Mean distributions for 4 different benchmarks. Each point is the mean time for a trial of 10,000 measurements. The x-axis is the index of the trial, while the y-axis is time.}
 \label{fig:meandistributions}
 \end{figure}
 
