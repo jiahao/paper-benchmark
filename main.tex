@@ -3,7 +3,6 @@
 
 %XXX Remove before final submission
 \usepackage{todonotes}
-
 \usepackage{cite}
 \usepackage{amsmath}
 \usepackage{caption}
@@ -14,7 +13,7 @@
 % after loading amsmath to restore such page breaks as IEEEtran.cls normally
 \usepackage{url}
 \usepackage{hyperref}
-
+\usepackage{verbatim}
 \usepackage{listings}
 
 \lstdefinelanguage{Julia}{
@@ -57,7 +56,56 @@ Email: \{jiahao,jrevels\}@csail.mit.edu}
 % make the title area
 \maketitle
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Paper Outline %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{comment}
+Paper TOC:
+    - Abstract [our contributions]:
+        - pointing out the wrong assumptions/strategies
+        - an automatable algorithm for conducting benchmark experiments
+        - a bootstrap-based hypothesis test for detecting regressions
+        - an interpretation for statisical significance
+        - currently in use in Julia development
+    - Introduction:
+        - Subsection: Problems:
+            - incorrect benchmarking is prevalant and dangerous
+            - benchmark timing measurements can be correlated in unpredictable ways
+            - techniques for controlling environmental variations are highly situation-specific and
+              are impossible to prove ``complete''
+            - taking a sufficient number of timing measurements to make reasonable conclusions
+              takes a long time
+        - Subsection: Existing assumptions/strategies that are wrong/insufficient:
+            - Assuming normality, even though benchmark timing distributions are generally
+              non-normal (according to our results)
+            - Assuming different benchmarks running on different machines will have the same timing
+              distributions, even though they don't (according to our results). This screws
+              up interpretations of statistical signficance.
+            - Assuming running benchmarks for a ``long'' time will ``warm up'' the machine/runtime
+              and thus result in reproducible behavior/``good'' results
+            - Chasing quiescence/normality via highly specific configuration/randomization, even
+              though users in practice will often not have the same machine setup as you (and won't
+              work as hard as you to measure/achieve quiescence)
+        - Brief outline of rest of paper
+    - Surprising Experimental Microbenchmark Results
+        - for simplicity, we limit our discussion to 4 microbenchmarks made for this purpose
+        - we've seen this behavior in our corpus of ~600 microbenchmarks in BaseBenchmarks.jl
+    - A Statistical Interpretation of Microbenchmark Results
+        - define terms, including the distinction that we're focusing on microbenchmarks (small time scales)
+        - define the model that describes timing variations that predicts the non-Gaussian behavior we see
+    - Our Microbenchmarking Methodology
+        - Subsection: Experimental Protocol (show linear scan plot)
+        - Subsection: Regressions Testing (show plot of various estimators)
+        - Subsection: Pitfalls (show crazy sumindex pdf)
+    - Implementation in Julia
+        - The experimental protocol is currently in use in Julia development
+            - runs ~1300 benchmarks (including ~600 microbenchmarks) in ~25 minutes
+            - caught ~12x indexing regressions between v0.4 and v0.5, which were then fixed
+            - has prevented the merge of changes which cause ~18x core language regressions
+        - Future work is incorporating the regressions testing method
+    - Conclusion:
+        - recap
+\end{comment}
+
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{abstract}
 We propose an automated method for rigorous detection of microbenchmark regressions in the
@@ -83,7 +131,7 @@ regressions into the core language.
 
 \IEEEpeerreviewmaketitle
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \label{sec:intro}
 \section{The complexity of modern architectures confounds timing measurements}
@@ -125,7 +173,7 @@ variations due to genuine changes in application peformance.
 In the following sections, we outline existing approaches, establish the problems these
 approaches
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \label{sec:existingapproaches}
 \section{Existing approaches}
@@ -154,7 +202,7 @@ data in memory~\cite{Mytkowicz2009}.
 \subsection{Statistical Approaches}
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Some things the compiler for your language can do are
 
@@ -198,7 +246,7 @@ produce a reproducible state in which to run the benchmark program. In practice,
 it is impossible to eliminate variation entirely~\cite{Alcocer2015,Barrett2016}.
 Therefore, it is still necessary to think about statistics.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{The statistics of execution times is highly nonnormal}
 
@@ -313,7 +361,7 @@ and is well defined for the distributions we expect from our statistical model.
 We demonstrate that our approach works well for a collection of sample Julia
 benchmarks, correctly detecting regressions with low misclassification rates.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{The statistics of timing fluctuations}
 
@@ -355,7 +403,7 @@ $f_X(\xi)$ is the probability density function (pdf) associated with the random 
 
 \textbf{Resampled quantities} are denoted with a superscript asterisk, $\cdot^*$. For example, $t^*_1, \dots t^*_m$ is a resample of $t_1, \dots t_n$.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \label{sec:statmodel}
 \subsection{A microscopic model for timing variations}
@@ -423,7 +471,7 @@ Secondly, there are special case limiting behaviors that make a lot of sense. Fo
 
 \TODO{Do we ever recover Gaussianity?}
 
-
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Benchmark methodology}
 
@@ -464,6 +512,7 @@ where $H$ is the Heaviside step function. The existence of such a factor produce
 We therefore recommend a truncated linear regression trimming all runs lasting less than the timer accuracy of 1 μs.
 \TODO{This is not the correct description of what we actually do}
 
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \label{sec:tuningprotocol}
@@ -492,6 +541,7 @@ Given a timer accuracy $\tau_{acc}$ and a timer precision $\tau_{prec}$, our alg
 \end{itemize}
 \end{enumerate}
 
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \section{Regression testing as hypothesis testing}
@@ -531,6 +581,7 @@ minimum (blue filled triangles).}
 
 Hypothesis testing based on location measures are sensitive to non-stationary OS jitter, for example if there is some jitter factor $i$ such that $X^{(i)}_P = 1$ while $X^{(i)}_Q = 0$ determistically. There is a fundamental definition problem in this situation. If we acknowledge that factor $i$ is always triggered once every time program $P$ runs but not in $Q$, then we could could fold the contribution of factor $i$ into the definition of $t_{<P}$, recognizing that it is not possible to run $P$ without triggering factor $i$. However, it is impossible to distinguish statistically between this case and non-stationary jitter, i.e.\ jitter that changes the machine's behavior for a time period longer than, say, the combined run times of $P$ and $Q$. For example, the OS may decide to start paging virtual memory to disk halfway through running $P$, which continues all throughout the time when the user runs $Q$. Another possibility is that the machine running the benchmark encounters an unusally high level of network traffic when running $P$ and $Q$, for example if the machine is suffering a DDoS attack. The only way to detect this kind of nonstationary noise is to run $P$ and $Q$ enough times so that the combined run time exceeds the characteristic time scale for this jitter. However, in practice this may require benchmarks to run for unacceptably long times.
 
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \subsection{Choice of dispersion parameter}
@@ -564,6 +615,7 @@ p  = mean(z .> zs) #Compute p-value
 
 \TODO{Say something about how we are doing m-of-n bootstrap, sampling without replacement, and what are typical resample sizes and number of trials that give us reliable estimates.}
 
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \section{Implementation in Julia}
@@ -640,6 +692,7 @@ correlation across multiple trials.}
 \label{fig:pdfsumindex}
 \end{figure}
 
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \section{Limitations of our current approach}
@@ -657,6 +710,7 @@ Related work:
 Tsafrir et al. [18] describe “input shaking”, a technique for determining the sensitivity of their simulations of parallel systems. (Dan Tsafrir, Keren Ouaknine, and Dror G. Feitelson. Reducing performance evaluation sensitivity and variability by input shaking. In MASCOTS, 2007.)
 Alameldeen and Wood[1] introduce variability in the latency of cache misses in order to alter thread-scheduling bias introduced by simulators that execute multi-threaded workloads. (Alaa R. Alameldeen and David A. Wood. Variability in architectural simulations of multi-threaded workloads. In IEEE HPCA,pages 7–18, 2003.)
 
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Conclusion}
 
@@ -667,6 +721,7 @@ outside of regression testing, such as testing for performance differences under
 
 \TODO{The conclusion goes here.}
 
+% Section Line %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section*{Acknowledgment}
 
