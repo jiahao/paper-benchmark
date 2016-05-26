@@ -1,0 +1,46 @@
+- Abstract [our contributions]:
+    - pointing out the wrong assumptions/strategies
+    - an automatable algorithm for conducting benchmark experiments
+    - a bootstrap-based hypothesis test for detecting regressions
+    - an interpretation for statisical significance
+    - currently in use in Julia development
+- Introduction:
+    - incorrect benchmarking is prevalant and dangerous
+    - brief outline of rest of paper
+- Problems faced by microbenchmarking frameworks / where existing solutions fall short
+    - reproducibile conclusions
+    - run quickly enough to be used in CI
+    - quantifiable confidence
+    - benchmark timing measurements can be correlated in unpredictable ways
+    - techniques for controlling environmental variations are highly situation-specific and
+      are impossible to prove ``complete''
+    - taking a sufficient number of timing measurements to make reasonable conclusions
+      takes a long time
+    - Assuming normality, even though benchmark timing distributions are generally
+      non-normal (according to our results)
+    - Assuming different benchmarks running on different machines will have the same timing
+      distributions, even though they don't (according to our results). This screws
+      up interpretations of statistical signficance.
+    - Assuming running benchmarks for a ``long'' time will ``warm up'' the machine/runtime
+      and thus result in reproducible behavior/``good'' results
+    - Chasing quiescence/normality via highly specific configuration/randomization, even
+      though users in practice will often not have the same machine setup as you (and won't
+      work as hard as you to measure/achieve quiescence)
+- Surprising Experimental Microbenchmark Results
+    - for simplicity, we limit our discussion to 4 microbenchmarks made for this purpose
+    - we've seen this behavior in our corpus of ~600 microbenchmarks in BaseBenchmarks.jl
+- A Statistical Interpretation of Microbenchmark Results
+    - define terms, including the distinction that we're focusing on microbenchmarks (small time scales)
+    - define the model that describes timing variations that predicts the non-Gaussian behavior we see
+- Our Microbenchmarking Methodology
+    - Subsection: Experimental Protocol (show linear scan plot)
+    - Subsection: Regressions Testing (show plot of various estimators)
+    - Subsection: Pitfalls (show crazy sumindex pdf)
+- Implementation in Julia
+    - The experimental protocol is currently in use in Julia development
+        - runs ~1300 benchmarks (including ~600 microbenchmarks) in ~25 minutes
+        - caught ~12x indexing regressions between v0.4 and v0.5, which were then fixed
+        - has prevented the merge of changes which cause ~18x core language regressions
+    - Future work is incorporating the regressions testing method
+- Conclusion:
+    - recap
