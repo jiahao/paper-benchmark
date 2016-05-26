@@ -1,0 +1,41 @@
+- Abstract [our contributions]:
+    - pointing out the wrong assumptions/strategies
+    - an automatable algorithm for conducting benchmark experiments
+    - a bootstrap-based hypothesis test for detecting regressions
+    - an interpretation for statisical significance
+    - currently in use in Julia development
+- Introduction:
+    - incorrect benchmarking is prevelant and dangerous
+    - describe what we'd like:
+        - reproducibile conclusions
+        - run quickly enough to be used in CI
+        - quantifiable confidence/rigorous statisitics
+- Problems faced by microbenchmarking frameworks / where existing solutions fall short
+    - Chasing quiescence is hard, and is even sensible anyway
+        - you can't really know whether you've controlled for all sources of variation
+        - techniques for quiescence are highly configuration-specific and non-portable
+        - users aren't going to put in the effort in practice
+    - Designing experimental protocol is hard
+        - discuss timer error
+        - taking a sufficient number of timing measurements to make reasonable conclusions
+          takes a long time
+        - Can't assuming running benchmarks for a ``long'' time will ``warm them up'', see fig 1
+    - Doing statistics on timing distributions is hard
+        - benchmark timing measurements can be correlated in unpredictable ways
+        - Can't assume normality is bad, see fig 1
+        - Can't assume different benchmarks timing measurements follow the same distribution, see fig 1. This screws
+          up other people's interpretations of statistical significance.
+- A Statistical Interpretation
+    - define terms, including the distinction that we're focusing on microbenchmarks (small time scales)
+    - define the model that describes timing variations that predicts the non-Gaussian behavior we see
+- Experimental Protocol (show linear scan plot)
+- Regressions Testing (show plot of various estimators)
+- Limitations of our methodology (show crazy sumindex pdf)
+- Implementation in Julia
+    - The experimental protocol is currently in use in Julia development
+        - runs ~1300 benchmarks (including ~600 microbenchmarks) in ~25 minutes
+        - caught ~12x indexing regressions between v0.4 and v0.5, which were then fixed
+        - has prevented the merge of changes which cause ~18x core language regressions
+    - Future work is incorporating the regressions testing method
+- Conclusion:
+    - recap
