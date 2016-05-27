@@ -257,12 +257,12 @@ and measured quantities related to microbenchmarking. We define this notation he
 
     \item
     \textbf{Estimated quantities} are denoted with a hat, $\hat\cdot$. For example,
-    $\hat{t}_{min}$ is the estimated value for the minimum value of the benchmark execution
+    $\hat{t}_{\textrm{min}}$ is the estimated value for the minimum value of the benchmark execution
     time.
 
     \item
     \textbf{Resampled quantities} are denoted with a superscript asterisk, $\cdot^*$. For
-    example, $t^*_1, \dots t^*_m$ is a resample of $t_1, \dots t_k$.
+    example, $t^*_1, \dots t^*_m$ is a resample of $t_1, \dots t_n$.
 
     \item
     A benchmark \textbf{experiment} is a recipe for obtaining multiple timing measurements
@@ -283,7 +283,7 @@ and measured quantities related to microbenchmarking. We define this notation he
     $\epsilon^{(i)[j]} = x^{(i)[j]} \tau^{(i)}$ is the \textbf{time delay} due to the
     $i^{\textrm{th}}$ \textbf{delay factor} for delay instruction $D^{[j]}$.  Specifically,
     $\tau^{(i)}$ is the factor's \textbf{time scale} and $x^{(i)[j]}$ is the factor's
-    \textbf{trigger count} for $D^{[j]}$. Delay factor indices are written using
+    \textbf{trigger coefficient} for $D^{[j]}$. Delay factor indices are written using
     parenthesized superscripts, $\cdot^{(i)}$.
 
     \item
@@ -305,7 +305,6 @@ and measured quantities related to microbenchmarking. We define this notation he
     x+\delta x$.
 \end{itemize}
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:model}
 \section{A better statistical interpretation of microbenchmark timing distributions}
@@ -315,6 +314,74 @@ problematic assumptions of normality or identical timing distributions between b
 This model will drive the design of our experimental protocol and hypothesis testing
 formulation, discussed in future sections.
 
+\subsection{The underlying model for program execution}
+
+Consider an initial benchmarkable user program $P_0$, whose output is deterministic and
+identical for every execution. $P_0$ can be specified by as a sequence of instructions
+$I^{[i]}$:
+
+\begin{equation}
+    P_0 = \left[I^{[1]}, I^{[2]}, \dots I^{[k]}\right]
+\end{equation}
+
+We define an \textit{instruction} as a specification of a state transition that takes the
+executing machine from an initial state to a desired output state. In an idealized universe,
+we could assume that the state transition for instruction $I^{[i]}$ takes exactly
+$\tau^{[i]}$ time, such that the total runtime of $P_0$ is $t_{P_0} = \sum_{i=1}^N
+\tau^{[i]}$.
+
+In reality, the machine and operating system within which $P_0$ runs are vulnerable to the
+factors described in Section~\ref{sec:challenges}. These factors may cause the computer to
+undergo zero or more intermediary state transitions before achieving the state transistion
+specified by instruction $I^{[i]}$. Since these factors \textit{delay} the completion of the
+original instructions, we refer to them as \textit{delay factors}\footnote{Technically,
+there are some causes of timing variations which might speed up the execution of a program,
+such as frequent scaling \TODO{cite}. However, these factors number far fewer than those
+that slow down execution of a program, and as such, are more easily controlled. Thus, we
+only focus on the latter, which we have seen to stochastically dominate the former
+\TODO{Jiahao: fix this abuse of terminology}}. We can account for these delay factors by
+modeling them as ``delay instructions'' $D^{[i]}$, which are interleaved with $P_0$'s
+original instructions to produce a new program $P$:
+
+\begin{equation}
+    P = \left[I^{[1]}, D^{[1]}, I^{[2]}, D^{[2]}, \dots I^{[k]}, D^{[k]}\right]
+\end{equation}
+
+While the semantics of $P_0$ and $P$ are identical, the presence of the delay instructions
+means that $t_P \ge t_{P_0}$, since $t_P = t_{P_0} + \sum_{j} \tau_{D^{[j]}}$, where
+$\tau_{D^{[j]}}$ is the execution time of $D^{[j]}$.
+
+$\tau_{D^{[j]}}$ can be further decomposed into the runtime contributions of individiual
+delay factors. Let us imagine the delay factor $i$ can discretely ``trigger'' once during
+the execution of $D^{[j]}$ with probability $p^{(i)}$.Assuming that every triggering of $i$
+takes a fixed time $\tau^{(i)}$, we can express $D^{[j]}$'s runtime as the \textit{random
+variable} $\tau_{D^{[j]}} = \sum_{i=1} x^{(i)}_j \tau^{(i)}$, where $x^{(i)}_j$ is a boolean
+\textit{trigger coefficient}. Summing the trigger coefficients for the $i^{\textrm{th}}$
+delay factor over all delay instructions gives us a \textit{trigger count}
+$X_P^{(i)}$ for the entire program $P$.
+
+Our final expression for $t_P$ in terms of these quantities is:
+
+\begin{align}
+t_P &= t_{P_0} + \sum_{j} \tau_{D^{[j]}} = t_{P_0} + \sum_{i} X_P^{(i)} \tau^{(i)} \\
+    &= t_{P_0} + \sum_{j} \sum_{i} x^{(i)[j]} \tau^{(i)}
+\end{align}
+
+\TODO{Should we still discuss the various distributions that can arise from the limiting behaviors of the model?}
+
+Note that if $\sum_{i} X_P^{(i)} = 0$, then $t_P = t_{P_0}$. For some machines, this ideal
+behavior may not be possible, but there must be at least one trigger count configuration
+which minimizes $t_P$ to some value $[t_P]_{\textrm{min}}$, invoking the fewest possible
+delay factors that lead to smallest possible increase in execution time over $t_{P_0}$.
+Rephrasing this property in the language of statisitics, there must exist some critical time
+$[t_P]_{\textrm{min}}$ for which the probability density function (pdf) $f_{t_P}(\xi)$ of
+$t_P$ obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi < [t_P]_{\textrm{min}}$
+
+\subsection{The model for timing measurements}
+
+Before our model is complete, we must account for measurement error due to \textit{timer
+accuracy}.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:protocol}
 \section{Experimental protocol for benchmark execution}
@@ -322,9 +389,9 @@ formulation, discussed in future sections.
 \begin{figure}
 \centering
 \includegraphics[width=0.45\textwidth]{figures/fig2/linear_scan_branchsum}
-\caption{$t_j = T_j(n)/n$ for many repeated linear scans for a particular benchmark,
-         where $T_j$ is defined in \eqref{eq:linsearch}. Each curve denotes a different
-         linear scan. Note the large spikes produced by jitter.}
+\caption{A plot of many trials for a single benchmark, where each trial scans through
+increasing values for $n$. Note the smooth curve and asymptotic lower bound of the minima
+$(n^{(i)}, [\hat{t}_{\textrm{min}}]^{(i)}_n)$.}
 \label{fig:scaling}
 \end{figure}
 
