@@ -116,12 +116,12 @@ application performance~\cite{HP5e}.
 
 At the hardware level, changes in temperature, workload, and power availability
 can trigger CPU clock frequency scaling to limit power consumption.
-
 At the operating system level, sources of variation are often referred to as
 OS jitter.
 Jitter may be caused by randomizing security features like address space layout
 randomization (ASLR)~\cite{Shacham2004},
 virtual memory management~\cite{Oyama2014,Oyama2016},
+context switching overhead to handle interrupts~\cite{Tsafrir2007},
 activity from system daemons and cluster managers~\cite{Petrini2003},
 or even suboptimal process- and thread-level scheduling~\cite{Lozi2016}.
 Even seemingly irrelevant configuration parameters like the size of the
