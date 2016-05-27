@@ -88,38 +88,13 @@ base library.
     highly nonnormal and have large outliers. Some benchmarks even exhibit correlation
     between consecutive timing measurements.
 
-
-    The first approach is to remove outliers~\cite{Rehn2015}\TODO{and loc. cit.} to improve
-    Gaussianity. However, it is unclear whether automated outlier removal can restore the
-    ability to use Gaussian statistics for these benchmarks without introducing significant
-    bias, particularly when the timing distributions are bimodal or multimodal.
-
-    The second approach is to use biased variances to correct for
-    non-Gaussianity~\cite{Mytkowicz2009}\TODO{check citation}. However, these corrections
-    inherently assume that the statistics are close to Gaussian, and so there will be
-    benchmarks for which this approach may fail to correct for non-Gaussianity.
-
     A third approach is to use robust statistics such as the median as a location
     parameter~\cite{Mytkowicz2009}, the interquartile range as a dispersion
     parameter~\cite{Mytkowicz2009}, or the medcouple for measuring skewness~\cite{Rehn2015}.
     The approach we propose here is most similar to this category of analyses, but we focus
     on the minimum instead.
 
-    An additional consideration for microbenchmarks (benchmarks with very short execution times)
-    is the measurement accuracy provided by the system timer.
-    Taking one timing measurement of many executions reduces the measurement error,
-    much as how the weight of a single sheet of paper can be measured more accurately
-    by weighing 500 sheets at once and dividing the measurement by 500,
-    as compared with weighing just one sheet directly.
-    However, the longer the total run time of a timing measurement, the more likely
-    the benchmarking process will incur environmental fluctuations.
-    Therefore, commonly used rules of thumb like
-    ``repeat the benchmark as many times as necessary so that the timing measurement
-    is at least 5 seconds'' may not produce the most accurate estimate for the
-    execution time of a microbenchmark.
 
-    In this paper, we present a fully automated framework for benchmarking that
-    combines and extends the best practices noted by previous authors.
 
     \begin{itemize}
     \item

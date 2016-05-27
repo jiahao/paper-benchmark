@@ -116,11 +116,14 @@ application performance~\cite{HP5e}.
 
 At the hardware level, changes in temperature, workload, and power availability
 can trigger CPU clock frequency scaling to limit power consumption.
+External factors such a high network traffic may also trigger interrupts at the
+OS level.
 At the operating system level, sources of variation are often referred to as
 OS jitter.
 Jitter may be caused by randomizing security features like address space layout
 randomization (ASLR)~\cite{Shacham2004},
 virtual memory management~\cite{Oyama2014,Oyama2016},
+changing between CPU privilege levels like kernel mode and user mode~\cite{Zaparanuks2009},
 context switching overhead to handle interrupts~\cite{Tsafrir2007},
 activity from system daemons and cluster managers~\cite{Petrini2003},
 or even suboptimal process- and thread-level scheduling~\cite{Lozi2016}.
@@ -131,9 +134,13 @@ in turn changes the alignment of data in memory~\cite{Mytkowicz2009}.
 
 The choice of programming language compiler parameters can result in yet
 further timing variations.
+Compiler optimizations can adversely affect the accuracy of hardware
+counters~\cite{Zaparanuks2009}, or in extreme cases eliminate key parts of the
+microbenchmark as dead code.
 For compiled languages, the linker is free to choose the binary layout of the
 library or executable arbitrarily, resulting in nondeterministic memory
-layouts~\cite{Georges2008}.
+layouts~\cite{Georges2008}. This problem is exacerbated in languages like C++,
+whose compilers introduce random name mangling of symbols~\cite{Kalibera2005}.
 Additionally, the behavior of the runtime can change depending on OS or hardware
 parameters. For example, changing the heap size can affect garbage collector
 performance~\cite{Blackburn2004}.
@@ -168,6 +175,9 @@ However, the least squares fit is sensitive to outliers (which are detected and
 reported by \lstinline|criterion|), and requires many evaluations of the benchmark.
 Furthermore, many of the shorter timing measurements are contaminated by timer
 inaccuracy, which contributes to the error in estimating the true benchmark run time.
+One approach based on variance reduction requires strong assumptions on the
+underlying statistics, such as the existence of fourth moments and the lack of
+large outliers~\cite{Kalibera2006,Kalibera2013}.
 
 \begin{figure}
 \centering
@@ -200,9 +210,9 @@ The horizontal axis is the index of the trial, while the vertical axis is time.}
 \label{fig:meandistributions}
 \end{figure}
 
-Another complication is that benchmark times usually do \textit{not} exhibit
-iid normal statistics, which are assumed in textbook comparisons using
-$t$-tests or $F$-ratios~\cite{Lilja2000}.
+Benchmark times usually do \textit{not} exhibit iid normal statistics,
+which are assumed in textbook comparisons using $t$-tests or
+$F$-ratios~\cite{Lilja2000}.
 Contrary to these standard assumptions,
 we see a wide variety of statistical behaviors in actual measurements;
 Figure~\ref{fig:meandistributions} shows that even for the four illustrative
@@ -215,14 +225,13 @@ The fourth benchmark shows a complicated distribution exhibiting bimodality and
 drift.
 In these situations, the standard tests have poor statistical
 power~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}.
-Other authors suggest removing outliers to improve
+Other authors have suggested removing outliers to improve
 Gaussianity~\cite{Rehn2015}\TODO{and loc. cit.}, but these methods would
 qualitatively alter the statistics shown in our exemplar benchmarks.
-
-The second approach is to use biased variances to correct for
-non-Gaussianity~\cite{Mytkowicz2009}\TODO{check citation}. However, these corrections
-inherently assume that the statistics are close to Gaussian, and so there will be
-benchmarks for which this approach may fail to correct for non-Gaussianity.
+A better approach is to use robust statistics such as the median as a location
+parameter~\cite{Hampel1971,Mytkowicz2009,Touati2013}.
+However, we will argue in the next section that the minimum is a more appropriate
+location parameter for regression benchmarking.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
