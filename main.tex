@@ -100,12 +100,14 @@ while running the entire suite in a reasonable amount of time.
 In practice, the complexity of modern hardware and software enviroments introduce
 undesirable variations across timing measurements of the same benchmark, which
 reduce the reliability of detecting performance regressions.
-Furthermore, a single execution of a microbenchmark is too short to measure
+
+
+\paragraph{The effects of timer measurement error}
+A single execution of a microbenchmark is too short to measure
 accurately by a system timer. Thus, it is necessary to execute the
 microbenchmarks multiple times to obtain an accurate timing measurement.
-
-\paragraph{The effects of timer noise}
 \TODO{Cite strategies for orchestrating performance counters}
+
 
 \paragraph{Controlling for environmental effects}
 Modern hardware and operating systems introduce many confounding factors that
@@ -114,12 +116,13 @@ application performance~\cite{HP5e}.
 
 At the hardware level, changes in temperature, workload, and power availability
 can trigger CPU clock frequency scaling to limit power consumption.
-
 At the operating system level, sources of variation are often referred to as
 OS jitter.
 Jitter may be caused by randomizing security features like address space layout
 randomization (ASLR)~\cite{Shacham2004},
 virtual memory management~\cite{Oyama2014,Oyama2016},
+context switching overhead to handle interrupts~\cite{Tsafrir2007},
+activity from system daemons and cluster managers~\cite{Petrini2003},
 or even suboptimal process- and thread-level scheduling~\cite{Lozi2016}.
 Even seemingly irrelevant configuration parameters like the size of the
 OS environment can confound reproducibility. Changing the size of the
@@ -138,7 +141,7 @@ performance~\cite{Blackburn2004}.
 Most of these studies focus on Java programming language and/or the Linux OS.
 While the phenomena described clearly apply to general software and hardware environments,
 mitigating strategies are often highly specialized, ranging from custom OS
-\cite{Akkan2012}\TODO{Cite NIX, Tessellation}, custom compilers providing
+kernels \cite{Tessellation,Akkan2012}, custom compilers providing
 reproducible~\cite{Georges2008} or consistently randomized~\cite{Curtsinger2013}
 binary layouts, to low-variability garbage collectors~\cite{Huang2004}.
 These mechanisms for achieving quiescence are platform dependent, deviate strongly
@@ -146,18 +149,32 @@ from a typical user's machine and configuration, or cannot be reasonably automat
 root access to the user's machine. Reliance on these techniques could negatively impact
 portability and thus decrease the likelihood of adoption.
 
-\subsection{Designing an experimental protocol is hard}
-
 \TODO{cite/discuss Kalibera's paper on ``benchmarking in reasonable time'', and similar
 papers}
 
+
 \subsection{Doing stastistics on timing measurements is hard}
+
+The myraid sources of environmental variation must all be mitigated against to
+produce a reproducible state in which to run the benchmark program. In practice,
+it is impossible to eliminate variation entirely~\cite{Alcocer2015,Barrett2016}.
+Therefore, software for microbenchmarking must account for both measurement error
+and environmental factors of variation.
+One approach taken by microbenchmarking packages like Haskell's
+\lstinline|criterion|~\cite{criterion} collects multiple timing measurements
+with increasing number of benchmark executions, which are used to estimate the
+run time as the gradient of the ordinary least squares regression line.
+However, the least squares fit is sensitive to outliers (which are detected and
+reported by \lstinline|criterion|), and requires many evaluations of the benchmark.
+Furthermore, many of the shorter timing measurements are contaminated by timer
+inaccuracy, which contributes to the error in estimating the true benchmark run time.
+
 \begin{figure}
 \centering
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/simple_branchsum_fast}
-    \caption{Benchmark 1: Unimodal}
+    \caption{Benchmark 1: Unimodal with skew and large outliers}
 \end{subfigure}%
 ~
 \begin{subfigure}{0.22\textwidth}
@@ -168,22 +185,45 @@ papers}
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/drift_manyallocs_slow}
-    \caption{Benchmark 3: Skewed}
+    \caption{Benchmark 3: Drift}
 \end{subfigure}
 ~
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/bimodal_drift_sumindex}
-    \caption{Benchmark 4: Bimodal + Skewed}
+    \caption{Benchmark 4: Bimodal with drift}
 \end{subfigure}
-\caption{Mean distributions for 4 different benchmarks. Each point is the mean time for a
-         trial of 10,000 measurements. The x-axis is the index of the trial, while the
-         y-axis is time.}
+\caption{Variability in the mean benchmark time across multiple trials, showing
+that the mean has non-iid, nonnormal behavior in four different benchmarks.
+Each point represents a mean time computed from trial of 10,000 measurements.
+The horizontal axis is the index of the trial, while the vertical axis is time.}
 \label{fig:meandistributions}
 \end{figure}
 
-\TODO{cite/discuss papers that assume normality and/or that all benchmark timings are
-identically distributed}
+Another complication is that benchmark times usually do \textit{not} exhibit
+iid normal statistics, which are assumed in textbook comparisons using
+$t$-tests or $F$-ratios~\cite{Lilja2000}.
+Contrary to these standard assumptions,
+we see a wide variety of statistical behaviors in actual measurements;
+Figure~\ref{fig:meandistributions} shows that even for the four illustrative
+benchmarks considered in this paper, none of them show iid normal behavior.
+The first benchmark exhibits a skewed density and has many outliers on one side.
+The second benchmark has a bimodal distribution.
+The third benchmark shows a consistent drift, with the measured time increasing
+as the benchmark trial is rerun.
+The fourth benchmark shows a complicated distribution exhibiting bimodality and
+drift.
+In these situations, the standard tests have poor statistical
+power~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}.
+Other authors suggest removing outliers to improve
+Gaussianity~\cite{Rehn2015}\TODO{and loc. cit.}, but these methods would
+qualitatively alter the statistics shown in our exemplar benchmarks.
+
+The second approach is to use biased variances to correct for
+non-Gaussianity~\cite{Mytkowicz2009}\TODO{check citation}. However, these corrections
+inherently assume that the statistics are close to Gaussian, and so there will be
+benchmarks for which this approach may fail to correct for non-Gaussianity.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:notation}

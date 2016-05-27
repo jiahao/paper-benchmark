@@ -79,145 +79,7 @@ base library.
 \IEEEpeerreviewmaketitle
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\label{sec:intro}
-\section{Introduction}
-
-Developers of high performance applications often rely on microbenchmark suites to determine
-the impact of code changes on program performance. Despite the importance of these suites in
-safeguarding against performance regressions, developers often run and interpret them in an
-ad-hoc manner. This lack of a rigorous microbenchmarking methodology is dangerous, at best
-wasting developers' time and at worst encouraging misguided code alterations that damage
-performance instead of improve it.
-
-\TODO{briefly outline/motivate the structure/purpose of the paper, including the constraint that we only focus on microbenchmarks}
-\TODO{come up with better section/subsection names}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\label{sec:challenges}
-\section{Microbenchmarking is hard}
-
-Before we discuss the difficulties of microbenchmarking, we should state the criteria we use
-to analyze existing approaches. To emphasize the practical consequences of these criteria,
-we present them in terms of the features that an ``ideal'' microbenchmarking framework might
-provide.
-
-The ideal microbenchmarking framework would \textit{produce reproducible measurements} while
-\textit{respecting user time constraints}. It would \textit{automatically identify
-regressions} between trials, quantifying confidence in the results using \textit{rigorous
-estimates of statistical significance}. Wide adoption of the tool would require it to be
-\textit{portable}, functioning across all platforms relevant to the application being
-benchmarked. In order to automatically prevent the introduction of new regressions, the
-framework must be \textit{suitable for inclusion in continuous integration (CI) pipelines}
-alongside normal testing suites.
-
-Unfortunately, there are signficant barriers to implementing these features in practice,
-especially with regards to reproducibility. In the following subsections, we discuss how
-existing approaches attempt to overcome these barriers, and argue that these approaches -
-individually or combined - are not sufficient to meet our microbenchmarking criteria.
-
-\subsection{Controlling for environmental effects is hard}
-
-Modern hardware and operating systems present a large number of confounding factors that
-complicate a developer's ability to reason about variations in user-space application
-performance~\cite{HP5e}. These factors include...
-
-\TODO{cite/elaborate on these where necessary}
-\begin{itemize}
-    \item ...changes in temperature, workload, and power availability that can trigger
-    CPU frequency scaling.
-    \item ...hardware and software interrupts which can disrupt timers and benchmark
-    execution.
-    \item ...kernel-controlled behaviors such as thread rescheduling, 
-    \item ...insufficient timer accuracy, which can cause measurement bias and
-    error~\cite{Mytkowicz2009}.
-\end{itemize}
-
-Many of these factors, particular those triggered via the kernel, are called ``OS jitter''.
-Since timing variations due to OS jitter are difficult to distinguish from timing variations
-due to genuine changes in application peformance, there is a wide corpus of literature
-regarding the isolation and elimination of OS jitter. Research progress in this area is
-highly platform-dependent, and mostly revolves around specialized kernel configurations,
-compiler modifications, and VM tuning.
-
-\TODO{discuss existing ``environmental'' research, see notes in comments}
-
 \begin{comment}
-Points to make:
-    - VM research is probably skewed towards JVM
-    - OS research is probably skewed towards Linux
-Things to cite:
-    - changing the heap size can affect garbage collector performance % cite - Blackburn et al. [4], Stephen M Blackburn, Perry Cheng, and Kathryn S McKin- ley. Myths and realities: The performance impact of garbage collection. In SIGMETRICS, pages 25–36. ACM Press, 2004.
-    - OSs that provide a low-variability environment for program execution, such as NIX or Tesselation
-    - tickless kernels featuring soft partitioning of cores and threads between application and systems processes~\cite{Akkan2012}.
-    - replay compilation for reproducible binary layouts~\cite{Georges2008}
-    - randomization of binary layouts to reduce correlation in timing measurements, in projects like to induce Gaussian timing distributions \textsc{Stabilizer}~\cite{Curtsinger2013}
-        - (?) introduce nondeterminism in memory management
-        - (?) determine the layout of binaries
-    - paper citing thread scheduling problem in Linux
-    - low-variability garbage collection in just-in-time compiler virtual machines~\cite{Huang2004}
-    - strategies for orchestrating performance counters
-    - Furthermore, seemingly irrelevant configuration parameters like the size of the UNIX
-      environment can confound reproducibility. Changing the size of the environment moves the
-      call stack, which is loaded after the environment, which in turn changes the alignment of
-      data in memory~\cite{Mytkowicz2009}.
-\end{comment}
-
-In the end, microbenchmarking should not rely on system quiescence, since many techniques
-for achieving quiescence are platform-dependent, require a high degree of deviation from
-a user's personal OS/compiler configuration, or cannot be reasonably automated without
-root access to the user's machine. Reliance on these techniques could negatively impact
-portability and thus decrease the likelihood of adoption.
-
-\subsection{Designing an experimental protocol is hard}
-
-\TODO{cite/discuss Kalibera's paper on benchmarking in reasonable time, and similar papers}
-
-\subsection{Estimating statistical signficance is hard}
-
-\TODO{cite/discuss papers that assume normality and/or that all benchmark timings are identically distributed}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\label{sec:experiment}
-\section{Microbenchmark timing distributions are highly nonnormal and not identical}
-
-\begin{figure}
-\centering
-
-\begin{subfigure}{0.22\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figures/fig1/simple_branchsum_fast}
-    \caption{Benchmark 1: Unimodal}
-\end{subfigure}%
-~
-\begin{subfigure}{0.22\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figures/fig1/bimodal_branchsum}
-    \caption{Benchmark 2: Bimodal}
-\end{subfigure}
-
-\begin{subfigure}{0.22\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figures/fig1/drift_manyallocs_slow}
-    \caption{Benchmark 3: Skewed}
-\end{subfigure}
-~
-\begin{subfigure}{0.22\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figures/fig1/bimodal_drift_sumindex}
-    \caption{Benchmark 4: Bimodal + Skewed}
-\end{subfigure}
-
-\caption{Mean distributions for 4 different benchmarks. Each point is the mean time for a
-         trial of 10,000 measurements. The x-axis is the index of the trial, while the
-         y-axis is time.}
-\label{fig:meandistributions}
-\end{figure}
-
-\begin{comment}
-    The myraid sources of environmental variation must all be mitigated against to
-    produce a reproducible state in which to run the benchmark program. In practice,
-    it is impossible to eliminate variation entirely~\cite{Alcocer2015,Barrett2016}.
-    Therefore, it is still necessary to think about statistics.
 
     A common assumption is that it suffices to ``warm up'' the machine by running the
     benchmark program a few times, after which the becnhmarks will run at peak performance.
@@ -226,12 +88,6 @@ portability and thus decrease the likelihood of adoption.
     highly nonnormal and have large outliers. Some benchmarks even exhibit correlation
     between consecutive timing measurements.
 
-    Some examples of these behaviors can be seen in Figure~\ref{fig:examplebenchmarks}, even
-    for the very simple benchmarks that we describe in this paper. As a result, simple
-    textbook statistical tests like $t$-tests and $F$-ratios, which assume iid normality,
-    have poor statistical power, as discussed
-    in~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}. There have been several
-    approaches to this problem.
 
     The first approach is to remove outliers~\cite{Rehn2015}\TODO{and loc. cit.} to improve
     Gaussianity. However, it is unclear whether automated outlier removal can restore the
@@ -261,22 +117,6 @@ portability and thus decrease the likelihood of adoption.
     ``repeat the benchmark as many times as necessary so that the timing measurement
     is at least 5 seconds'' may not produce the most accurate estimate for the
     execution time of a microbenchmark.
-    Microbenchmarking packages like Haskell's \lstinline|criterion|~\cite{criterion}
-    compensate for both measurement error and environmental fluctuation
-    by collecting multiple timing measurements with increasing number of benchmark
-    executions and then estimating the run time from the gradient of the best fit
-    line determined using ordinary least squares. However, the least squares approach
-    has several deficiencies. First, it is sensitive to outliers (which are detected and
-    reported by \lstinline|criterion|). Second, many of the shorter timing measurements
-    have high relative error when they are close to the intrinsic accuracy of the
-    timer, which contribute to the error in estimating the true benchmark run time.
-    Third, the linear search process always requires many evaluations of the benchmark.
-
-    There is also some work on software tools for the statistical analysis of benchmarks.
-    The Speedup-Test is an R package for analysing benchmark data~\cite{Touati2013}.
-    There is also the framework of Chen et al 2015~\cite{Chen2015}.
-    \TODO{Jarrett has more}
-
 
     In this paper, we present a fully automated framework for benchmarking that
     combines and extends the best practices noted by previous authors.
@@ -798,8 +638,6 @@ Alameldeen and Wood[1] introduce variability in the latency of cache misses in o
 
 Our methodology can be applied in other comparisons of program performance
 outside of regression testing, such as testing for performance differences under different compiler flags~\cite{Mytkowicz2009}.
-
-\TODO{What did Grigori Fursin write about this?}
 
 \TODO{The conclusion goes here.}
 
