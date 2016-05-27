@@ -153,7 +153,7 @@ suite[:manyallocs_slow] = @benchmarkable manyallocs_slow(10) evals=1
 # Experiment #
 ##############
 
-# julia> JLD.save("results/evals_results.jld", "suite", evals_experiment(suite, 1000, 1:1000));
+# julia> JLD.save("results/evals_results.jld", "suite", evals_experiment(suite, 1000, 1:1000, compress=true));
 function evals_experiment(group, s, ns)
     result = BenchmarkGroup()
     for (id, bench) in group
@@ -162,7 +162,7 @@ function evals_experiment(group, s, ns)
     return result
 end
 
-# julia> JLD.save("results/new_results.jld", "suite", repeat_experiment(suite, 100));
+# julia> JLD.save("results/new_results.jld", "suite", repeat_experiment(suite, 100), compress=true);
 function repeat_experiment(group, reps)
     results = Vector{BenchmarkGroup}(reps)
     for i in 1:reps
