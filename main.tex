@@ -339,8 +339,43 @@ $t_P$ obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi < [t_P]_{\textrm{min}}$
 
 \subsection{The model for timing measurements}
 
-Before our model is complete, we must account for measurement error due to \textit{timer
-accuracy}.
+The previous section presented a model that describes theoretical program execution times,
+but said nothing about the behavior of the timing \textit{measurements} that are observed in
+experiment. For a given initial program $P_0$ and number of executions $n$, we can
+decompose an observed timing measurement $T$ thusly:
+
+\begin{equation}
+    T = n \cdot t_{P_0} + \epsilon_{\textrm{acc}} + \sum_{j = 1}^{n} \sum_{i} \left[X_P^{(i)} \tau^{(i)}\right]_j
+\end{equation}
+
+where $\epsilon_{\textrm{acc}}$ is the error due to insufficient timer accuracy. The maximum
+possible value of $\epsilon_{\textrm{acc}}$ is the timer accuracy itself, which we'll denote
+as $\tau_{\textrm{acc}}$. Since $\tau_{\textrm{acc}}$ is a finite value, we'll simply assume
+that $\epsilon_{\textrm{acc}} = \tau_{\textrm{acc}}$ for the rest of our analysis.
+
+We can obtain a naive estimate $\hat{t}_{P_0}$ for $t_{P_0}$ by dividing $T$ by $n$:
+
+\begin{equation}
+    \hat{t}_{P_0} = \frac{T}{n} = t_{P_0} + \frac{\tau_{\textrm{acc}}}{n} + \frac{\sum_{j = 1}^{n} \sum_{i} \left[X_P^{(i)} \tau^{(i)}\right]_j}{n}
+\end{equation}
+
+In the limit of large $n$, the $\frac{\tau_{\textrm{acc}}}{n}$ term goes to zero, but the
+behavior of the delay factor term is unclear:
+
+\begin{equation}
+    \lim_{n\to\infty} \frac{T}{n} = t_{P_0} + \lim_{n\to\infty} \frac{\sum_{j = 1}^{n} \sum_{i} \left[X_P^{(i)} \tau^{(i)}\right]_j}{n}
+\end{equation}
+
+\TODO{At this point, simplify the analysis by substituting the delay term for one which
+treats the input as a single execution of a repetitive program rather than repeated
+executions of a single program.}
+
+\TODO{clean this up, move upper bound $X_P$ discussion to previous subsection}
+We can tighten our analysis by recognizing that $X_P$ is bounded by the number of
+instructions in $P$. But remember that our upper bound is the lowest upper bound possible,
+since our model only allows for one trigger per instruction - we could've reasonably allowed
+multiple , when it could be the case that
+the factor triggers m
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:protocol}
@@ -350,7 +385,7 @@ accuracy}.
 \centering
 \includegraphics[width=0.45\textwidth]{figures/fig2/linear_scan_branchsum}
 \caption{A plot of many trials for a single benchmark, where each trial scans through
-increasing values for $n$. Note the smooth curve and asymptotic lower bound of the minima
+increasing values of $n$. Note the smooth curve and asymptotic lower bound of the minima
 $(n^{(i)}, [\hat{t}_{\textrm{min}}]^{(i)}_n)$.}
 \label{fig:scaling}
 \end{figure}
