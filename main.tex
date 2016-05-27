@@ -88,89 +88,61 @@ base library.
 Developers of high performance applications often rely on microbenchmark suites to determine
 the impact of code changes on program performance. Despite the importance of these suites in
 safeguarding against performance regressions, developers often run and interpret them in an
-ad-hoc manner. This lack of a rigorous microbenchmarking methodology is dangerous, at best
-wasting developers' time and at worst encouraging misguided code alterations that damage
-performance instead of improve it.
+ad hoc manner. The disregard for proper interpretation wastes development time and may
+lead to misguided development decisions that worsen performance.
 
-The purpose of this paper is to introduce the reader to the difficulties of designing and
-implementing a microbenchmarking methodology, and to present a methodology that overcomes
-these difficulties. Note that we only focus on \textit{microbenchmarks}, which we define as
-benchmarks whose execution time is on or below the scale of microseconds (\num{1e-6}
-seconds). \TODO{motivate this sentence by saying that this is the scale in which timer
-error is prevalent}
+In this paper, we consider the problem of developing a microbenchmark suite
+suitable for a continuous integration (CI) workflow. We define a microbenchmark
+as a benchmark whose expected execution time is on the order of 1 microsecond
+or shorter,
+The goal is to detect reproducibly and automatically when performance regressions occurred,
+while running the entire suite in a reasonable amount of time.
+In practice, the complexity of modern hardware and software enviroments introduce
+undesirable variations across timing measurements of the same benchmark, which
+reduce the reliability of detecting performance regressions.
+Furthermore, a single execution of a microbenchmark is too short to measure
+accurately by a system timer. Thus, it is necessary to execute the
+microbenchmarks multiple times to obtain an accurate timing measurement.
 
-We should preface our discussion by stating the criteria we use to analyze existing
-approaches. To emphasize the practical consequences of these criteria, we present them in
-terms of the features that an ``ideal'' microbenchmarking framework might provide:
+\paragraph{The effects of timer noise}
+\TODO{Cite strategies for orchestrating performance counters}
 
-An ideal microbenchmarking methodology would \textit{produce reproducible measurements}
-while \textit{respecting user time constraints}. It would \textit{automatically identify
-regressions} between experimental trials, quantifying detection confidence using
-\textit{rigorous estimates of statistical significance}. Wide adoption of the methodology
-would require it to be \textit{portable}, functioning across all platforms relevant to the
-application being benchmarked. In order to automatically prevent the introduction of new
-regressions, the methodology must be \textit{suitable for inclusion in continuous
-integration (CI) pipelines} alongside normal testing suites.
+\paragraph{Controlling for environmental effects}
+Modern hardware and operating systems introduce many confounding factors that
+complicate a developer's ability to reason about variations in user-space
+application performance~\cite{HP5e}.
 
-Unfortunately, there are signficant barriers to implementing these features in practice,
-especially with regards to reproducibility. In the following section, we discuss how
-existing approaches attempt to overcome these barriers, and argue that these approaches -
-individually or combined - are not sufficient to meet our microbenchmarking criteria.
+At the hardware level, changes in temperature, workload, and power availability
+can trigger CPU clock frequency scaling to limit power consumption.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\label{sec:challenges}
-\section{Microbenchmarking is hard}
+At the operating system level, sources of variation are often referred to as
+OS jitter.
+Jitter may be caused by randomizing security features like address space layout
+randomization (ASLR)~\cite{Shacham2004},
+virtual memory management~\cite{Oyama2014,Oyama2016},
+or even suboptimal process- and thread-level scheduling~\cite{Lozi2016}.
+Even seemingly irrelevant configuration parameters like the size of the
+OS environment can confound reproducibility. Changing the size of the
+environment moves the call stack, which is loaded after the environment, which
+in turn changes the alignment of data in memory~\cite{Mytkowicz2009}.
 
-\subsection{Controlling for environmental effects is hard}
+The choice of programming language compiler parameters can result in yet
+further timing variations.
+For compiled languages, the linker is free to choose the binary layout of the
+library or executable arbitrarily, resulting in nondeterministic memory
+layouts~\cite{Georges2008}.
+Additionally, the behavior of the runtime can change depending on OS or hardware
+parameters. For example, changing the heap size can affect garbage collector
+performance~\cite{Blackburn2004}.
 
-Modern hardware and operating systems present a large number of confounding factors that
-complicate a developer's ability to reason about variations in user-space application
-performance~\cite{HP5e}. These factors include...
-
-\TODO{cite/elaborate on these where necessary}
-\begin{itemize}
-    \item ...changes in temperature, workload, and power availability that can trigger
-    CPU frequency scaling.
-    \item ...hardware and software interrupts which can disrupt timers and benchmark
-    execution.
-    \item ...kernel-controlled behaviors such as thread rescheduling, virtual addressing,
-    and other quirks of memory configuration (paging, swapping, caching,
-    etc.)~\cite{Oyama2014,Oyama2016}.
-\end{itemize}
-
-The literature refers to many of these factors - particular those triggered via the kernel -
-as ``OS jitter''. Since timing variations due to OS jitter are difficult to distinguish from
-timing variations due to genuine changes in application peformance, there is a wide corpus
-of literature regarding OS jitter isolation and elimination. Research progress in this area
-is highly platform-dependent, and mostly revolves around specialized kernel configurations,
-compiler modifications, and VM tuning.
-
-\TODO{discuss existing ``environmental'' research, see notes in comments}
-
-\begin{comment}
-Points to make:
-    - VM research is probably skewed towards JVM
-    - OS research is probably skewed towards Linux
-Things to cite:
-    - changing the heap size can affect garbage collector performance % cite - Blackburn et al. [4], Stephen M Blackburn, Perry Cheng, and Kathryn S McKin- ley. Myths and realities: The performance impact of garbage collection. In SIGMETRICS, pages 25–36. ACM Press, 2004.
-    - OSs that provide a low-variability environment for program execution, such as NIX or Tesselation
-    - tickless kernels featuring soft partitioning of cores and threads between application and systems processes~\cite{Akkan2012}.
-    - replay compilation for reproducible binary layouts~\cite{Georges2008}
-    - randomization of binary layouts to reduce correlation in timing measurements, in projects like to induce Gaussian timing distributions \textsc{Stabilizer}~\cite{Curtsinger2013}
-        - (?) introduce nondeterminism in memory management
-        - (?) determine the layout of binaries
-    - paper citing thread scheduling problem in Linux
-    - low-variability garbage collection in just-in-time compiler virtual machines~\cite{Huang2004}
-    - strategies for orchestrating performance counters
-    - Furthermore, seemingly irrelevant configuration parameters like the size of the UNIX
-      environment can confound reproducibility. Changing the size of the environment moves the
-      call stack, which is loaded after the environment, which in turn changes the alignment of
-      data in memory~\cite{Mytkowicz2009}.
-\end{comment}
-
-In the end, microbenchmarking should not rely on system quiescence, since many techniques
-for achieving quiescence are platform-dependent, require a high degree of deviation from
-a user's personal OS/compiler configuration, or cannot be reasonably automated without
+Most of these studies focus on Java programming language and/or the Linux OS.
+While the phenomena described clearly apply to general software and hardware environments,
+mitigating strategies are often highly specialized, ranging from custom OS
+\cite{Akkan2012}\TODO{Cite NIX, Tessellation}, custom compilers providing
+reproducible~\cite{Georges2008} or consistently randomized~\cite{Curtsinger2013}
+binary layouts, to low-variability garbage collectors~\cite{Huang2004}.
+These mechanisms for achieving quiescence are platform dependent, deviate strongly
+from a typical user's machine and configuration, or cannot be reasonably automated without
 root access to the user's machine. Reliance on these techniques could negatively impact
 portability and thus decrease the likelihood of adoption.
 
