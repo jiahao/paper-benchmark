@@ -122,6 +122,7 @@ OS jitter.
 Jitter may be caused by randomizing security features like address space layout
 randomization (ASLR)~\cite{Shacham2004},
 virtual memory management~\cite{Oyama2014,Oyama2016},
+activity from system daemons and cluster managers~\cite{Petrini2003},
 or even suboptimal process- and thread-level scheduling~\cite{Lozi2016}.
 Even seemingly irrelevant configuration parameters like the size of the
 OS environment can confound reproducibility. Changing the size of the
@@ -140,7 +141,7 @@ performance~\cite{Blackburn2004}.
 Most of these studies focus on Java programming language and/or the Linux OS.
 While the phenomena described clearly apply to general software and hardware environments,
 mitigating strategies are often highly specialized, ranging from custom OS
-\cite{Akkan2012}\TODO{Cite NIX, Tessellation}, custom compilers providing
+kernels \cite{Tessellation,Akkan2012}, custom compilers providing
 reproducible~\cite{Georges2008} or consistently randomized~\cite{Curtsinger2013}
 binary layouts, to low-variability garbage collectors~\cite{Huang2004}.
 These mechanisms for achieving quiescence are platform dependent, deviate strongly
