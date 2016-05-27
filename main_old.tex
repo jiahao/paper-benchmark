@@ -127,7 +127,7 @@ performance~\cite{HP5e}. These factors include...
     CPU frequency scaling.
     \item ...hardware and software interrupts which can disrupt timers and benchmark
     execution.
-    \item ...kernel-controlled behaviors such as thread rescheduling, 
+    \item ...kernel-controlled behaviors such as thread rescheduling,
     \item ...insufficient timer accuracy, which can cause measurement bias and
     error~\cite{Mytkowicz2009}.
 \end{itemize}
@@ -261,16 +261,6 @@ portability and thus decrease the likelihood of adoption.
     ``repeat the benchmark as many times as necessary so that the timing measurement
     is at least 5 seconds'' may not produce the most accurate estimate for the
     execution time of a microbenchmark.
-    Microbenchmarking packages like Haskell's \lstinline|criterion|~\cite{criterion}
-    compensate for both measurement error and environmental fluctuation
-    by collecting multiple timing measurements with increasing number of benchmark
-    executions and then estimating the run time from the gradient of the best fit
-    line determined using ordinary least squares. However, the least squares approach
-    has several deficiencies. First, it is sensitive to outliers (which are detected and
-    reported by \lstinline|criterion|). Second, many of the shorter timing measurements
-    have high relative error when they are close to the intrinsic accuracy of the
-    timer, which contribute to the error in estimating the true benchmark run time.
-    Third, the linear search process always requires many evaluations of the benchmark.
 
     There is also some work on software tools for the statistical analysis of benchmarks.
     The Speedup-Test is an R package for analysing benchmark data~\cite{Touati2013}.

@@ -100,12 +100,14 @@ while running the entire suite in a reasonable amount of time.
 In practice, the complexity of modern hardware and software enviroments introduce
 undesirable variations across timing measurements of the same benchmark, which
 reduce the reliability of detecting performance regressions.
-Furthermore, a single execution of a microbenchmark is too short to measure
+
+
+\paragraph{The effects of timer measurement error}
+A single execution of a microbenchmark is too short to measure
 accurately by a system timer. Thus, it is necessary to execute the
 microbenchmarks multiple times to obtain an accurate timing measurement.
-
-\paragraph{The effects of timer noise}
 \TODO{Cite strategies for orchestrating performance counters}
+
 
 \paragraph{Controlling for environmental effects}
 Modern hardware and operating systems introduce many confounding factors that
@@ -146,12 +148,24 @@ from a typical user's machine and configuration, or cannot be reasonably automat
 root access to the user's machine. Reliance on these techniques could negatively impact
 portability and thus decrease the likelihood of adoption.
 
-\subsection{Designing an experimental protocol is hard}
-
 \TODO{cite/discuss Kalibera's paper on ``benchmarking in reasonable time'', and similar
 papers}
 
+
 \subsection{Doing stastistics on timing measurements is hard}
+
+Software for microbenchmarking must account for both measurement error and
+environmental factors of variation.
+Microbenchmarking packages like Haskell's \lstinline|criterion|~\cite{criterion}
+collecting multiple timing measurements with increasing number of benchmark
+executions and then estimating the run time from the gradient of the best fit
+line determined using ordinary least squares. However, the least squares
+fit is sensitive to outliers (which are detected and reported by \lstinline|criterion|),
+and requires many evaluations of the benchmark. Furthermore, many of the shorter
+timing measurements are contaminater by timer inaccuracy, which contributes to
+the error in estimating the true benchmark run time.
+
+
 \begin{figure}
 \centering
 \begin{subfigure}{0.22\textwidth}
