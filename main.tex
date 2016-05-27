@@ -155,24 +155,26 @@ papers}
 
 \subsection{Doing stastistics on timing measurements is hard}
 
-Software for microbenchmarking must account for both measurement error and
-environmental factors of variation.
-Microbenchmarking packages like Haskell's \lstinline|criterion|~\cite{criterion}
-collecting multiple timing measurements with increasing number of benchmark
-executions and then estimating the run time from the gradient of the best fit
-line determined using ordinary least squares. However, the least squares
-fit is sensitive to outliers (which are detected and reported by \lstinline|criterion|),
-and requires many evaluations of the benchmark. Furthermore, many of the shorter
-timing measurements are contaminater by timer inaccuracy, which contributes to
-the error in estimating the true benchmark run time.
-
+The myraid sources of environmental variation must all be mitigated against to
+produce a reproducible state in which to run the benchmark program. In practice,
+it is impossible to eliminate variation entirely~\cite{Alcocer2015,Barrett2016}.
+Therefore, software for microbenchmarking must account for both measurement error
+and environmental factors of variation.
+One approach taken by microbenchmarking packages like Haskell's
+\lstinline|criterion|~\cite{criterion} collects multiple timing measurements
+with increasing number of benchmark executions, which are used to estimate the
+run time as the gradient of the ordinary least squares regression line.
+However, the least squares fit is sensitive to outliers (which are detected and
+reported by \lstinline|criterion|), and requires many evaluations of the benchmark.
+Furthermore, many of the shorter timing measurements are contaminated by timer
+inaccuracy, which contributes to the error in estimating the true benchmark run time.
 
 \begin{figure}
 \centering
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/simple_branchsum_fast}
-    \caption{Benchmark 1: Unimodal}
+    \caption{Benchmark 1: Unimodal with skew and large outliers}
 \end{subfigure}%
 ~
 \begin{subfigure}{0.22\textwidth}
@@ -183,22 +185,45 @@ the error in estimating the true benchmark run time.
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/drift_manyallocs_slow}
-    \caption{Benchmark 3: Skewed}
+    \caption{Benchmark 3: Drift}
 \end{subfigure}
 ~
 \begin{subfigure}{0.22\textwidth}
     \centering
     \includegraphics[width=\textwidth]{figures/fig1/bimodal_drift_sumindex}
-    \caption{Benchmark 4: Bimodal + Skewed}
+    \caption{Benchmark 4: Bimodal with drift}
 \end{subfigure}
-\caption{Mean distributions for 4 different benchmarks. Each point is the mean time for a
-         trial of 10,000 measurements. The x-axis is the index of the trial, while the
-         y-axis is time.}
+\caption{Variability in the mean benchmark time across multiple trials, showing
+that the mean has non-iid, nonnormal behavior in four different benchmarks.
+Each point represents a mean time computed from trial of 10,000 measurements.
+The horizontal axis is the index of the trial, while the vertical axis is time.}
 \label{fig:meandistributions}
 \end{figure}
 
-\TODO{cite/discuss papers that assume normality and/or that all benchmark timings are
-identically distributed}
+Another complication is that benchmark times usually do \textit{not} exhibit
+iid normal statistics, which are assumed in textbook comparisons using
+$t$-tests or $F$-ratios~\cite{Lilja2000}.
+Contrary to these standard assumptions,
+we see a wide variety of statistical behaviors in actual measurements;
+Figure~\ref{fig:meandistributions} shows that even for the four illustrative
+benchmarks considered in this paper, none of them show iid normal behavior.
+The first benchmark exhibits a skewed density and has many outliers on one side.
+The second benchmark has a bimodal distribution.
+The third benchmark shows a consistent drift, with the measured time increasing
+as the benchmark trial is rerun.
+The fourth benchmark shows a complicated distribution exhibiting bimodality and
+drift.
+In these situations, the standard tests have poor statistical
+power~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}.
+Other authors suggest removing outliers to improve
+Gaussianity~\cite{Rehn2015}\TODO{and loc. cit.}, but these methods would
+qualitatively alter the statistics shown in our exemplar benchmarks.
+
+The second approach is to use biased variances to correct for
+non-Gaussianity~\cite{Mytkowicz2009}\TODO{check citation}. However, these corrections
+inherently assume that the statistics are close to Gaussian, and so there will be
+benchmarks for which this approach may fail to correct for non-Gaussianity.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:notation}

@@ -80,10 +80,6 @@ base library.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{comment}
-    The myraid sources of environmental variation must all be mitigated against to
-    produce a reproducible state in which to run the benchmark program. In practice,
-    it is impossible to eliminate variation entirely~\cite{Alcocer2015,Barrett2016}.
-    Therefore, it is still necessary to think about statistics.
 
     A common assumption is that it suffices to ``warm up'' the machine by running the
     benchmark program a few times, after which the becnhmarks will run at peak performance.
@@ -92,12 +88,6 @@ base library.
     highly nonnormal and have large outliers. Some benchmarks even exhibit correlation
     between consecutive timing measurements.
 
-    Some examples of these behaviors can be seen in Figure~\ref{fig:examplebenchmarks}, even
-    for the very simple benchmarks that we describe in this paper. As a result, simple
-    textbook statistical tests like $t$-tests and $F$-ratios, which assume iid normality,
-    have poor statistical power, as discussed
-    in~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}. There have been several
-    approaches to this problem.
 
     The first approach is to remove outliers~\cite{Rehn2015}\TODO{and loc. cit.} to improve
     Gaussianity. However, it is unclear whether automated outlier removal can restore the
@@ -127,12 +117,6 @@ base library.
     ``repeat the benchmark as many times as necessary so that the timing measurement
     is at least 5 seconds'' may not produce the most accurate estimate for the
     execution time of a microbenchmark.
-
-    There is also some work on software tools for the statistical analysis of benchmarks.
-    The Speedup-Test is an R package for analysing benchmark data~\cite{Touati2013}.
-    There is also the framework of Chen et al 2015~\cite{Chen2015}.
-    \TODO{Jarrett has more}
-
 
     In this paper, we present a fully automated framework for benchmarking that
     combines and extends the best practices noted by previous authors.
