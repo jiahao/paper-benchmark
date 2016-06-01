@@ -106,6 +106,7 @@ a statistical model which, in contrast, provides an explicit formulation of timi
 variations, and substantiate our argument using data obtained from a small set of mock Julia
 benchmarks.
 
+\label{sec:timererror}
 \paragraph{The effects of timer measurement error}
 
 Our methodology pays special attention to benchmarks whose expected execution time is on the
@@ -237,8 +238,8 @@ benchmarks for which this approach may fail to correct for non-Gaussianity.
 \label{sec:notation}
 \section{Notation}
 
-The rest of this paper utilizes a consistent notation for discussing the various statistical
-and measured quantities related to microbenchmarking. We define this notation here:
+The rest of this paper utilizes a consistent notation for discussing various statistical and
+measured quantities related to benchmarking. We define this notation here:
 
 \begin{itemize}
     \item
@@ -288,9 +289,9 @@ and measured quantities related to microbenchmarking. We define this notation he
     \end{itemize}
 
     \item
-    $\epsilon^{(i)[j]} = x^{(i)[j]} \tau^{(i)}$ is the \textbf{time delay} due to the
+    $\epsilon^{(i)[j]} = x_P^{(i)[j]} \tau^{(i)}$ is the \textbf{time delay} due to the
     $i^{\textrm{th}}$ \textbf{delay factor} for delay instruction $D^{[j]}$.  Specifically,
-    $\tau^{(i)}$ is the factor's \textbf{time scale} and $x^{(i)[j]}$ is the factor's
+    $\tau^{(i)}$ is the factor's \textbf{time scale} and $x_P^{(i)[j]}$ is the factor's
     \textbf{trigger coefficient} for $D^{[j]}$. Delay factor indices are written using
     parenthesized superscripts, $\cdot^{(i)}$.
 
@@ -315,115 +316,170 @@ and measured quantities related to microbenchmarking. We define this notation he
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:model}
-\section{A better statistical interpretation of microbenchmark timing distributions}
+\section{A better statistical interpretation of benchmark timing distributions}
 
-In this section, we present a statistical description of microbenchmark behavior that avoids
+In this section, we present a statistical description of benchmark behavior that avoids
 problematic assumptions of normality or identical timing distributions between benchmarks.
-This model will drive the design of our experimental protocol and hypothesis testing
-formulation, discussed in future sections.
+This model will drive the design of the experimental protocol and the hypothesis test
+that we discuss in future sections.
 
 \subsection{The underlying model for program execution}
 
 Consider an initial benchmarkable user program $P_0$, whose output is deterministic and
-identical for every execution. $P_0$ can be specified by as a sequence of instructions
-$I^{[i]}$:
+identical for every execution of the program. $P_0$ can be specified by as a sequence of
+instructions $I^{[i]}$:
 
 \begin{equation}
     P_0 = \left[I^{[1]}, I^{[2]}, \dots I^{[k]}\right]
 \end{equation}
 
-We define an \textit{instruction} as a specification of a state transition that takes the
-executing machine from an initial state to a desired output state. In an idealized universe,
-we could assume that the state transition for instruction $I^{[i]}$ takes exactly
-$\tau^{[i]}$ time, such that the total runtime of $P_0$ is $t_{P_0} = \sum_{i=1}^N
-\tau^{[i]}$.
+Each instruction $I^{[i]}$ specifies a state transition that takes the executing machine
+from an initial state to a desired output state. In an idealized universe, we could assume
+that the state transition for instruction $I^{[i]}$ takes exactly $\tau^{[i]}$ time, such
+that the total runtime of $P_0$ is $t_{P_0} = \sum_{i=1}^N \tau^{[i]}$.
 
-In reality, the machine and operating system within which $P_0$ runs are vulnerable to the
-factors described in Section~\ref{sec:challenges}. These factors may cause the computer to
-undergo zero or more intermediary state transitions before achieving the state transistion
-specified by instruction $I^{[i]}$. Since these factors \textit{delay} the completion of the
-original instructions, we refer to them as \textit{delay factors}\footnote{Technically,
-there are some causes of timing variations which might speed up the execution of a program,
-such as frequent scaling \TODO{cite}. However, these factors number far fewer than those
-that slow down execution of a program, and as such, are more easily controlled. Thus, we
-only focus on the latter, which we have seen to stochastically dominate the former
-\TODO{Jiahao: fix this abuse of terminology}}. We can account for these delay factors by
-modeling them as ``delay instructions'' $D^{[i]}$, which are interleaved with $P_0$'s
-original instructions to produce a new program $P$:
+In reality, the machine and operating system executing $P_0$ are vulnerable to the factors
+described in Section~\ref{sec:challenges}. These factors may cause the computer to undergo
+zero or more intermediary state transitions before achieving the state transistion specified
+by instruction $I^{[i]}$. Since these factors \textit{delay} the completion of the original
+instructions, we refer to them as \textit{delay factors}\footnote{Technically, there are
+some causes of timing variations which might speed up the execution of a program, such as
+frequent scaling \TODO{cite}. However, these factors number far fewer than those that slow
+down execution of a program, and as such, are more easily controlled. Thus, we only focus on
+the latter, which we have seen to stochastically dominate the former \TODO{Jiahao: fix this
+abuse of terminology}}. We can account for these additional state transitions by modeling
+them as \textit{delay instructions} $D^{[i]}$, which are interleaved with $P_0$'s original
+instructions to produce a new program $P$:
 
 \begin{equation}
     P = \left[I^{[1]}, D^{[1]}, I^{[2]}, D^{[2]}, \dots I^{[k]}, D^{[k]}\right]
 \end{equation}
 
-While the semantics of $P_0$ and $P$ are identical, the presence of the delay instructions
-means that $t_P \ge t_{P_0}$, since $t_P = t_{P_0} + \sum_{j} \tau_{D^{[j]}}$, where
-$\tau_{D^{[j]}}$ is the execution time of $D^{[j]}$.
+We assume that the delay instructions do not interfere with the semantics of $P_0$, such
+that $P$ and $P_0$ are characterized by an identical mapping of inputs to outputs. While
+this restriction forces $P$ and $P_0$ to share the same semantics, it does not force them
+to have the same runtime. The runtime of $P$ is
 
-$\tau_{D^{[j]}}$ can be further decomposed into the runtime contributions of individiual
-delay factors. Let us imagine the delay factor $i$ can discretely ``trigger'' once during
-the execution of $D^{[j]}$ with probability $p^{(i)}$.Assuming that every triggering of $i$
-takes a fixed time $\tau^{(i)}$, we can express $D^{[j]}$'s runtime as the \textit{random
-variable} $\tau_{D^{[j]}} = \sum_{i=1} x^{(i)}_j \tau^{(i)}$, where $x^{(i)}_j$ is a boolean
-\textit{trigger coefficient}. Summing the trigger coefficients for the $i^{\textrm{th}}$
-delay factor over all delay instructions gives us a \textit{trigger count}
-$X_P^{(i)}$ for the entire program $P$.
+\begin{equation}
+    t_P = t_{P_0} + \sum_{j} \tau^{[j]}_D
+\end{equation}
+
+where $\tau^{[j]}_D$ is the execution time of $D^{[j]}$. Since $\tau^{[j]}_D \ge 0$, it
+follows that $t_P \ge t_{P_0}$.
+
+$\tau^{[j]}_D$ can be further decomposed into the runtime contributions of individual delay
+factors. Let us imagine the delay factor $i$ can discretely ``trigger'' once during the
+execution of $D^{[j]}$ with probability $p^{(i)[j]}$. Assuming that every triggering of $i$
+takes a fixed time $\tau^{(i)}$, then
+
+\begin{equation}
+    \tau^{[j]}_D = \sum_{i} x_P^{(i)[j]} \tau^{(i)}
+\end{equation}
+
+where $x_P^{(i)[j]}$ is a \textit{Bernoulli random variable} with success probability
+$p^{(i)[j]}$. We denote the total number of times the $i^{\textrm{th}}$ delay factor was
+triggered during the execution of $P$ as the \textit{trigger count} $X_P^{(i)} = \sum_{j}
+x_P^{(i)[j]}$. Since the trigger count is a sum of independent Bernoulli random variables with
+nonidentical success probabilities, $X_P^{(i)}$ is itself a random variable that follows a
+\textit{Poisson binomial distribution} parameterized by the success probabilities
+$\left[p^{(i)[1]}, \dots p^{(i)[k]}\right]$.
 
 Our final expression for $t_P$ in terms of these quantities is:
 
 \begin{align}
-t_P &= t_{P_0} + \sum_{j} \tau_{D^{[j]}} = t_{P_0} + \sum_{i} X_P^{(i)} \tau^{(i)} \\
-    &= t_{P_0} + \sum_{j} \sum_{i} x^{(i)[j]} \tau^{(i)}
+t_P &= t_{P_0} + \sum_{j} \tau^{[j]}_D \\ \nonumber
+    &= t_{P_0} + \sum_{i} \sum_{j=1}^{k} x_P^{(i)[j]} \tau^{(i)} \\ \nonumber
+    &= t_{P_0} + \sum_{i} X_P^{(i)} \tau^{(i)}
 \end{align}
 
-\TODO{Should we still discuss the various distributions that can arise from the limiting behaviors of the model?}
+Thus, we've shown that our model treats $t_P$ as a random variable whose distribution is not
+necessarily Gaussian, but rather depends on the trigger probabilities $p^(i)[j]$ that are
+determined by the combined behavior of the delay factors and the initial benchmark program
+$P_0$.
 
-Note that if $\sum_{i} X_P^{(i)} = 0$, then $t_P = t_{P_0}$. For some machines, this ideal
-behavior may not be possible, but there must be at least one trigger count configuration
-which minimizes $t_P$ to some value $[t_P]_{\textrm{min}}$, invoking the fewest possible
-delay factors that lead to smallest possible increase in execution time over $t_{P_0}$.
-Rephrasing this property in the language of statisitics, there must exist some critical time
-$[t_P]_{\textrm{min}}$ for which the probability density function (pdf) $f_{t_P}(\xi)$ of
-$t_P$ obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi < [t_P]_{\textrm{min}}$
+\subsection{Extreme behaviors of the model}
 
-\subsection{The model for timing measurements}
+Recall that $k$ is the number of instructions in $P_0$. In the extreme case where all
+$p^{(i)[j]} = 1$, all $X_P^{(i)} = k$ such that $t_P = t_{P_0} + k \sum_{i} \tau^{(i)}$. If
+we assume that the number of delay factors is fixed, then the sum over $i$ is a constant,
+and the upper bound on $t_P$ scales linearly with $k$.
 
-The previous section presented a model that describes theoretical program execution times,
+In the opposite extreme case, all $p^{(i)[j]} = 0$, all $X_P^{(i)} = 0$ such that $t_P =
+t_{P_0}$. Thus, the lower bound on $t_P$ is simply $t_{P_0}$.
+
+It is possible that neither of these extreme behaviors ever occur in reality, but among
+the trigger count configurations encountered in a given experiment, there must be at least
+one configuration which maximizes $t_P$ to some value $[t_P]_{\textrm{max}} \le t_{P_0} +
+k \sum_{i} \tau^{(i)}$, and at least one configuration which minimizes $t_P$ to some value
+$[t_P]_{\textrm{min}} \ge t_{P_0}$.
+
+Rephrasing these properties in the language of statisitics, there must exist some critical
+time $[t_P]_{\textrm{max}}$ for which the probability density function (pdf) $f_{t_P}(\xi)$
+of $t_P$ obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi > [t_P]_{\textrm{max}}$, and some
+critical time $[t_P]_{\textrm{min}}$ for which $f_{t_P}(\xi) = 0 \; \forall \; \xi <
+[t_P]_{\textrm{min}}$.
+
+\subsection{Incorporating measurement into the model}
+
+The previous sections presented a model that describes theoretical program execution times,
 but said nothing about the behavior of the timing \textit{measurements} that are observed in
-experiment. For a given initial program $P_0$ and number of executions $n$, we can
-decompose an observed timing measurement $T$ thusly:
+experiment. In this section, we show that
 
-\begin{equation}
-    T = n \cdot t_{P_0} + \epsilon_{\textrm{acc}} + \sum_{j = 1}^{n} \sum_{i} \left[X_P^{(i)} \tau^{(i)}\right]_j
-\end{equation}
+As discussed in Section~\ref{sec:timererror}, a timing measurement often incorporates
+multiple benchmark executions in order to mitigate error due to timer inaccuracy. To
+simplify our analysis, we can represent $n$ executions of a program $P_0$ comprised of $k$
+instructions as a single execution of a program $Q_0$, which is the result of concatenating
+$n$ copies of $P_0$:
+
+\begin{align}
+P_0 &= \left[I^{[1]}, I^{[2]}, \dots I^{[k]} \right] \\ \nonumber
+Q_0 &= \left[P_0, P_0, \dots P_0 \right] \\ \nonumber
+    &= \left[I_{P}^{[1]}, \dots I_{P}^{[k]}, I_{P}^{[1]}, \dots I_{P}^{[k]}, \dots I_{P}^{[1]}, \dots I_{P}^{[k]} \right] \\ \nonumber
+    &= \left[I_{Q}^{[1]}, I_{Q}^{[2]}, \dots I_{Q}^{[nk]} \right]
+\end{align}
+
+such that instruction $I_{P}^{[i]} = I_{Q}^{[i + ck]}$ for $c \in \{0, \dots n\}$.
+
+Following the convention of the previous section, we use $Q$ to denote the program that
+results from interleaving $Q_0$ with delay instructions. An observed timing measurement $T$
+of $Q$ can be decomposed thusly:
+
+\begin{align}
+    T &= t_{Q_0} + \epsilon_{\textrm{acc}} + \sum_{i} X_Q^{(i)} \tau^{(i)} \\ \nonumber
+      &= n \cdot t_{P_0} + \epsilon_{\textrm{acc}} + \sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}
+\end{align}
 
 where $\epsilon_{\textrm{acc}}$ is the error due to insufficient timer accuracy. The maximum
 possible value of $\epsilon_{\textrm{acc}}$ is the timer accuracy itself, which we'll denote
-as $\tau_{\textrm{acc}}$. Since $\tau_{\textrm{acc}}$ is a finite value, we'll simply assume
-that $\epsilon_{\textrm{acc}} = \tau_{\textrm{acc}}$ for the rest of our analysis.
+as $\tau_{\textrm{acc}}$. Since $\tau_{\textrm{acc}}$ is a finite value, the rest of our
+analysis will simply assume the worst case, where $\epsilon_{\textrm{acc}} = \tau_{\textrm{acc}}$.
 
 We can obtain a naive estimate $\hat{t}_{P_0}$ for $t_{P_0}$ by dividing $T$ by $n$:
 
 \begin{equation}
-    \hat{t}_{P_0} = \frac{T}{n} = t_{P_0} + \frac{\tau_{\textrm{acc}}}{n} + \frac{\sum_{j = 1}^{n} \sum_{i} \left[X_P^{(i)} \tau^{(i)}\right]_j}{n}
+    \hat{t}_{P_0} = \frac{T}{n} = t_{P_0} + \frac{\tau_{\textrm{acc}}}{n} + \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}}{n}
 \end{equation}
 
 In the limit of large $n$, the $\frac{\tau_{\textrm{acc}}}{n}$ term goes to zero, but the
 behavior of the delay factor term is unclear:
 
 \begin{equation}
-    \lim_{n\to\infty} \frac{T}{n} = t_{P_0} + \lim_{n\to\infty} \frac{\sum_{j = 1}^{n} \sum_{i} \left[X_P^{(i)} \tau^{(i)}\right]_j}{n}
+    \lim_{n\to\infty} \frac{T}{n} = t_{P_0} + \lim_{n\to\infty} \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}}{n}
 \end{equation}
 
-\TODO{At this point, simplify the analysis by substituting the delay term for one which
-treats the input as a single execution of a repetitive program rather than repeated
-executions of a single program.}
+The fact that the delay factor term does not dissipate at large $n$ leads to an important
+and controversial realization: \textbf{One cannot necessarily eliminate the effects of
+external variation on a single measurement simply by executing the benchmark a large number
+of times.} In our model, whether or not increasing $n$ can render the delay factor term
+neglible depends entirely on the trigger count configuration, which, as we discussed in
+Section~\ref{sec:intro}, is not easily controlled in practice. The upper bound of the delay
+factor term, which we derived in the previous section, potentially dwarfs small $t_{P_0}$ at
+the limit of large $n$:
 
-\TODO{clean this up, move upper bound $X_P$ discussion to previous subsection}
-We can tighten our analysis by recognizing that $X_P$ is bounded by the number of
-instructions in $P$. But remember that our upper bound is the lowest upper bound possible,
-since our model only allows for one trigger per instruction - we could've reasonably allowed
-multiple , when it could be the case that
-the factor triggers m
+\begin{align}
+    \lim_{n\to\infty} \lim_{p^{(i)[j]}\to1} \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}}{n} &= \lim_{n\to\infty} \frac{nk \sum_{i} \tau^{(i)}}{n} \\ \nonumber
+                                                                                                       &= k \sum_{i} \tau^{(i)}
+\end{align}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:protocol}
