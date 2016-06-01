@@ -118,6 +118,7 @@ number of executions.
 
 \TODO{Cite strategies for orchestrating performance counters}
 
+\label{sec:environment}
 \paragraph{Controlling for environmental effects}
 Modern hardware and operating systems introduce many confounding factors that
 complicate a developer's ability to reason about variations in user-space
@@ -161,7 +162,7 @@ portability and thus decrease the likelihood of adoption.
 \TODO{cite/discuss Kalibera's paper on ``benchmarking in reasonable time'', and similar
 papers}
 
-
+\label{sec:stats}
 \subsection{Doing stastistics on timing measurements is hard}
 
 The myraid sources of environmental variation must all be mitigated against to
@@ -232,7 +233,6 @@ The second approach is to use biased variances to correct for
 non-Gaussianity~\cite{Mytkowicz2009}\TODO{check citation}. However, these corrections
 inherently assume that the statistics are close to Gaussian, and so there will be
 benchmarks for which this approach may fail to correct for non-Gaussianity.
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:notation}
@@ -404,13 +404,13 @@ $p^{(i)[j]} = 1$, all $X_P^{(i)} = k$ such that $t_P = t_{P_0} + k \sum_{i} \tau
 we assume that the number of delay factors is fixed, then the sum over $i$ is a constant,
 and the upper bound on $t_P$ scales linearly with $k$.
 
-In the opposite extreme case, all $p^{(i)[j]} = 0$, all $X_P^{(i)} = 0$ such that $t_P =
+In the opposite extreme case, where all $p^{(i)[j]} = 0$, all $X_P^{(i)} = 0$ such that $t_P =
 t_{P_0}$. Thus, the lower bound on $t_P$ is simply $t_{P_0}$.
 
-It is possible that neither of these extreme behaviors ever occur in reality, but among
-the trigger count configurations encountered in a given experiment, there must be at least
-one configuration which maximizes $t_P$ to some value $[t_P]_{\textrm{max}} \le t_{P_0} +
-k \sum_{i} \tau^{(i)}$, and at least one configuration which minimizes $t_P$ to some value
+It is possible that neither of these extreme behaviors ever occur in reality, but among the
+trigger count configurations encountered in a given experiment, there must be at least one
+configuration which maximizes $t_P$ to some value $[t_P]_{\textrm{max}} \le t_{P_0} + k
+\sum_{i} \tau^{(i)}$, and at least one configuration which minimizes $t_P$ to some value
 $[t_P]_{\textrm{min}} \ge t_{P_0}$.
 
 Rephrasing these properties in the language of statisitics, there must exist some critical
@@ -423,7 +423,7 @@ critical time $[t_P]_{\textrm{min}}$ for which $f_{t_P}(\xi) = 0 \; \forall \; \
 
 The previous sections presented a model that describes theoretical program execution times,
 but said nothing about the behavior of the timing \textit{measurements} that are observed in
-experiment. In this section, we show that
+experiment.
 
 As discussed in Section~\ref{sec:timererror}, a timing measurement often incorporates
 multiple benchmark executions in order to mitigate error due to timer inaccuracy. To
@@ -434,7 +434,7 @@ $n$ copies of $P_0$:
 \begin{align}
 P_0 &= \left[I^{[1]}, I^{[2]}, \dots I^{[k]} \right] \\ \nonumber
 Q_0 &= \left[P_0, P_0, \dots P_0 \right] \\ \nonumber
-    &= \left[I_{P}^{[1]}, \dots I_{P}^{[k]}, I_{P}^{[1]}, \dots I_{P}^{[k]}, \dots I_{P}^{[1]}, \dots I_{P}^{[k]} \right] \\ \nonumber
+    &= \left[I_{P}^{[1]}, \dots I_{P}^{[k]}, I_{P}^{[1]}, \dots I_{P}^{[k]}, I_{P}^{[1]}, \dots I_{P}^{[k]} \right] \\ \nonumber
     &= \left[I_{Q}^{[1]}, I_{Q}^{[2]}, \dots I_{Q}^{[nk]} \right]
 \end{align}
 
@@ -472,7 +472,7 @@ and controversial realization: \textbf{One cannot necessarily eliminate the effe
 external variation on a single measurement simply by executing the benchmark a large number
 of times.} In our model, whether or not increasing $n$ can render the delay factor term
 neglible depends entirely on the trigger count configuration, which, as we discussed in
-Section~\ref{sec:intro}, is not easily controlled in practice. The upper bound of the delay
+Section~\ref{sec:environment}, is not easily controlled in practice. The upper bound of the delay
 factor term, which we derived in the previous section, potentially dwarfs small $t_{P_0}$ at
 the limit of large $n$:
 
