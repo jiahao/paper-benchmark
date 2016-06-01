@@ -58,23 +58,22 @@ Email: \{jiahao,jrevels\}@csail.mit.edu}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-We propose a rigorous methodology for automated microbenchmarking and regression detection
-in the presence of timer error, OS jitter and other environmental fluctuations. By examining
-data obtained from Julia microbenchmarks, we demonstrate the ways in which timing
-distributions can violate many of the statistical assumptions made by other benchmarking
-frameworks. From our experimental observations, we construct a model and an accompanying
-microbenchmarking strategy which purposefully avoids these assumptions. This strategy makes
-efficient use of user time constraints by simultaneously maximizing the number of
-measurements per trial while minimizing inter-measurement timing variations, rendering it
-suitable for continuous integration (CI) pipelines, even when applied to relatively large
-benchmark suites. Using our model, we formulate a robust, nonparametric hypothesis test that
-makes use of the bootstrap resampling method to estimate the statistical significance of
-observed variations in execution time. We test our methodology on a small collection of mock
-Julia benchmarks, discussing where it succeeds relative to other methods as well as pointing
-out potential pitfalls. Finally, we discuss a prototype implementation of the proposed
-method that was recently released to aid in the development of the Julia language and
-ecosystem, which has already caught and prevented several performance regressions in Julia's
-base library.
+We propose a rigorous methodology for automated benchmarking and regression detection in the
+presence of timer error, OS jitter and other environmental fluctuations. By examining data
+obtained from Julia benchmarks, we demonstrate the ways in which timing distributions can
+violate many of the statistical assumptions made by other benchmarking frameworks. From our
+experimental observations, we construct a model and an accompanying benchmarking
+strategy which purposefully avoids these assumptions. This strategy makes efficient use of
+user time constraints by simultaneously maximizing the number of measurements per trial
+while minimizing inter-measurement timing variations, rendering it suitable for continuous
+integration (CI) pipelines, even when applied to relatively large benchmark suites. Using
+our model, we formulate a robust, nonparametric hypothesis test that makes use of the
+bootstrap resampling method to estimate the statistical significance of observed variations
+in execution time. We test our methodology on a small collection of mock Julia benchmarks,
+discussing where it succeeds relative to other methods as well as pointing out potential
+pitfalls. Finally, we discuss a prototype implementation of the proposed method that was
+recently released to aid in the development of the Julia language and ecosystem, which has
+already caught and prevented several performance regressions in Julia's base library.
 \end{abstract}
 
 \IEEEpeerreviewmaketitle
@@ -85,29 +84,38 @@ base library.
 \label{sec:intro}
 \section{Introduction}
 
-Developers of high performance applications often rely on microbenchmark suites to determine
-the impact of code changes on program performance. Despite the importance of these suites in
+Developers of high performance applications often rely on benchmark suites to determine the
+impact of code changes on program performance. Despite the importance of these suites in
 safeguarding against performance regressions, developers often run and interpret them in an
-ad hoc manner. The disregard for proper interpretation wastes development time and may
-lead to misguided development decisions that worsen performance.
+ad hoc manner. This disregard for proper experimental methodology wastes development time
+and may lead to misguided decisions that worsen performance.
 
-In this paper, we consider the problem of developing a microbenchmark suite
-suitable for a continuous integration (CI) workflow. We define a microbenchmark
-as a benchmark whose expected execution time is on the order of 1 microsecond
-or shorter,
-The goal is to detect reproducibly and automatically when performance regressions occurred,
-while running the entire suite in a reasonable amount of time.
-In practice, the complexity of modern hardware and software enviroments introduce
-undesirable variations across timing measurements of the same benchmark, which
-reduce the reliability of detecting performance regressions.
+In this paper, we consider the problem of designing a language- and platform-agnostic
+benchmarking methodology suitable for inclusion in both a continuous integration (CI)
+pipeline and in a user's manual workflow. Our goal is to define an experimental protocol and
+a statistical test for automatically and reproducibly detecting performance regressions with
+respect to a given benchmark suite, quantifying detection confidence using rigorous
+estimates of statistical significance.
 
+In practice, the complexity of modern hardware and software enviroments reduces the
+reliability of regression detection frameworks by introducing undesirable variations in
+timing measurements and application performance. We review previous research efforts that
+identify sources of these variations, and argue that existing benchmarking methodologies
+make statistical assumptions that do not appropriately incorporate this research. We present
+a statistical model which, in contrast, provides an explicit formulation of timing
+variations, and substantiate our argument using data obtained from a small set of mock Julia
+benchmarks.
 
 \paragraph{The effects of timer measurement error}
-A single execution of a microbenchmark is too short to measure
-accurately by a system timer. Thus, it is necessary to execute the
-microbenchmarks multiple times to obtain an accurate timing measurement.
-\TODO{Cite strategies for orchestrating performance counters}
 
+Our methodology pays special attention to benchmarks whose expected execution time is on the
+order of 1 microsecond or shorter, which is quick enough that the benchmark is vulnerable to
+error due to insufficient system timer accuracy on modern platforms. A common technique for
+accurately measuring the runtime of these benchmarks is to time multiple executions of the
+benchmark, estimating the runtime of a single execution by dividing the measured time by the
+number of executions.
+
+\TODO{Cite strategies for orchestrating performance counters}
 
 \paragraph{Controlling for environmental effects}
 Modern hardware and operating systems introduce many confounding factors that
