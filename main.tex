@@ -6,6 +6,8 @@
 \usepackage{amsmath}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{subcaption}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 % Note that the amsmath package sets \interdisplaylinepenalty to 10000
 % thus preventing page breaks from occurring within multiline equations. Use:
 %\interdisplaylinepenalty=2500
@@ -91,20 +93,21 @@ ad hoc manner. This disregard for proper experimental methodology wastes develop
 and may lead to misguided decisions that worsen performance.
 
 In this paper, we consider the problem of designing a language- and platform-agnostic
-benchmarking methodology suitable for inclusion in both a continuous integration (CI)
-pipeline and in a user's manual workflow. Our goal is to define an experimental protocol and
-a statistical test for automatically and reproducibly detecting performance regressions with
-respect to a given benchmark suite, quantifying detection confidence using rigorous
-estimates of statistical significance.
+benchmarking methodology for rigorously testing large benchmark suites within reasonable
+time constraints, rendering it suitable for continuous integration (CI) pipelines and manual
+user workflows. Our goal is to define an experimental protocol and a statistical test for
+automatically and reproducibly detecting performance regressions with respect to a given
+benchmark suite, quantifying detection confidence using rigorous estimates of statistical
+significance.
 
 In practice, the complexity of modern hardware and software enviroments reduces the
 reliability of regression detection frameworks by introducing undesirable variations in
-timing measurements and application performance. We review previous research efforts that
-identify sources of these variations, and argue that existing benchmarking methodologies
-make statistical assumptions that do not appropriately incorporate this research. We present
-a statistical model which, in contrast, provides an explicit formulation of timing
-variations, and substantiate our argument using data obtained from a small set of mock Julia
-benchmarks.
+timing measurements and application performance. System quiescence research has acknowledged
+that these variations induce non-Gaussianity in performance statistics. Despite this
+research, current statistical approaches to regression detection improperly assume the
+Gaussianity of timing measurement distributions. We present a statistical model that, in
+contrast, provides an explicitly non-Gaussian formulation of timing variations. We
+substantiate our model using data obtained from a small set of mock Julia benchmarks.
 
 \label{sec:timererror}
 \paragraph{The effects of timer measurement error}
@@ -393,7 +396,7 @@ t_P &= t_{P_0} + \sum_{j} \tau^{[j]}_D \\ \nonumber
 \end{align}
 
 Thus, we've shown that our model treats $t_P$ as a random variable whose distribution is not
-necessarily Gaussian, but rather depends on the trigger probabilities $p^(i)[j]$ that are
+necessarily Gaussian, but rather depends on the trigger probabilities $p^{(i)[j]}$ that are
 determined by the combined behavior of the delay factors and the initial benchmark program
 $P_0$.
 
@@ -409,15 +412,15 @@ t_{P_0}$. Thus, the lower bound on $t_P$ is simply $t_{P_0}$.
 
 It is possible that neither of these extreme behaviors ever occur in reality, but among the
 trigger count configurations encountered in a given experiment, there must be at least one
-configuration which maximizes $t_P$ to some value $[t_P]_{\textrm{max}} \le t_{P_0} + k
+configuration which maximizes $t_P$ to some value $t_{\textrm{max}} \le t_{P_0} + k
 \sum_{i} \tau^{(i)}$, and at least one configuration which minimizes $t_P$ to some value
-$[t_P]_{\textrm{min}} \ge t_{P_0}$.
+$t_{\textrm{min}} \ge t_{P_0}$.
 
 Rephrasing these properties in the language of statisitics, there must exist some critical
-time $[t_P]_{\textrm{max}}$ for which the probability density function (pdf) $f_{t_P}(\xi)$
-of $t_P$ obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi > [t_P]_{\textrm{max}}$, and some
-critical time $[t_P]_{\textrm{min}}$ for which $f_{t_P}(\xi) = 0 \; \forall \; \xi <
-[t_P]_{\textrm{min}}$.
+time $t_{\textrm{max}}$ for which the probability density function (pdf) $f_{t_P}(\xi)$
+of $t_P$ obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi > t_{\textrm{max}}$, and some
+critical time $t_{\textrm{min}}$ for which $f_{t_P}(\xi) = 0 \; \forall \; \xi <
+t_{\textrm{min}}$.
 
 \subsection{Incorporating measurement into the model}
 
@@ -438,48 +441,53 @@ Q_0 &= \left[P_0, P_0, \dots P_0 \right] \\ \nonumber
     &= \left[I_{Q}^{[1]}, I_{Q}^{[2]}, \dots I_{Q}^{[nk]} \right]
 \end{align}
 
-such that instruction $I_{P}^{[i]} = I_{Q}^{[i + ck]}$ for $c \in \{0, \dots n\}$.
+such that instruction $I_{P}^{[i]} = I_{Q}^{[i + ck]}$ for $c \in \{0, \dots n\}$. Following
+the convention of the previous section, we use $Q$ to denote the program that results from
+interleaving $Q_0$ with delay instructions. Note that $Q$ is \textit{not} simply $n$
+repetitions of $P$, since $Q$'s delay instructions do not obey the repetition relation
+of the original instructions ($D_{P}^{[i]} \ne D_{Q}^{[i + ck]}$).
 
-Following the convention of the previous section, we use $Q$ to denote the program that
-results from interleaving $Q_0$ with delay instructions. An observed timing measurement $T$
-of $Q$ can be decomposed thusly:
+An observed timing measurement $T$ of a single execution of $Q$ can be decomposed as
+follows:
 
 \begin{align}
     T &= t_{Q_0} + \epsilon_{\textrm{acc}} + \sum_{i} X_Q^{(i)} \tau^{(i)} \\ \nonumber
       &= n \cdot t_{P_0} + \epsilon_{\textrm{acc}} + \sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}
 \end{align}
 
-where $\epsilon_{\textrm{acc}}$ is the error due to insufficient timer accuracy. The maximum
-possible value of $\epsilon_{\textrm{acc}}$ is the timer accuracy itself, which we'll denote
-as $\tau_{\textrm{acc}}$. Since $\tau_{\textrm{acc}}$ is a finite value, the rest of our
-analysis will simply assume the worst case, where $\epsilon_{\textrm{acc}} = \tau_{\textrm{acc}}$.
+where $\epsilon_{\textrm{acc}}$ is the error due to insufficient timer accuracy. We assume
+that $\epsilon_{\textrm{acc}}$ is symmetrically distributed between $-\tau_{\textrm{acc}}$
+and $\tau_{\textrm{acc}}$.
 
-We can obtain a naive estimate $\hat{t}_{P_0}$ for $t_{P_0}$ by dividing $T$ by $n$:
+We can obtain a naive estimate for $t_{P_0}$ by dividing $T$ by $n$:
 
 \begin{equation}
-    \hat{t}_{P_0} = \frac{T}{n} = t_{P_0} + \frac{\tau_{\textrm{acc}}}{n} + \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}}{n}
+    \frac{T}{n} = t_{P_0} + \frac{\epsilon_{\textrm{acc}}}{n} + \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}}{n}
 \end{equation}
 
-In the limit of large $n$, the $\frac{\tau_{\textrm{acc}}}{n}$ term goes to zero, but the
-behavior of the delay factor term is unclear:
+In the limit of large $n$, $\frac{\epsilon_{\textrm{acc}}}{n}$ goes to zero, but the
+behavior of the delay factor term is less clear:
 
 \begin{equation}
     \lim_{n\to\infty} \frac{T}{n} = t_{P_0} + \lim_{n\to\infty} \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}}{n}
 \end{equation}
 
-The fact that the delay factor term does not dissipate at large $n$ leads to an important
-and controversial realization: \textbf{One cannot necessarily eliminate the effects of
-external variation on a single measurement simply by executing the benchmark a large number
-of times.} In our model, whether or not increasing $n$ can render the delay factor term
-neglible depends entirely on the trigger count configuration, which, as we discussed in
-Section~\ref{sec:environment}, is not easily controlled in practice. The upper bound of the delay
-factor term, which we derived in the previous section, potentially dwarfs small $t_{P_0}$ at
-the limit of large $n$:
+Previously, we derived a tight upper bound on the delay factor term from the worst case
+where $p^{(i)[j]} = 1$. By examining this worst case in the limit of large $n$, we see that
+the delay factor term can dwarf $t_{P_0}$ regardless of the number of executions of $P_0$
+performed during the measurement:
 
 \begin{align}
-    \lim_{n\to\infty} \lim_{p^{(i)[j]}\to1} \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}}{n} &= \lim_{n\to\infty} \frac{nk \sum_{i} \tau^{(i)}}{n} \\ \nonumber
-                                                                                                       &= k \sum_{i} \tau^{(i)}
+    \lim_{n\to\infty} \frac{T}{n} &= t_{P_0} + \lim_{n\to\infty} \frac{nk \sum_{i} \tau^{(i)}}{n} \\ \nonumber
+                                  &= t_{P_0} + k \sum_{i} \tau^{(i)} \\ \nonumber
+                                  &\ge t_{\textrm{max}}
 \end{align}
+
+Eq~\ref{eq:10} is a key result of our model: \textbf{One cannot necessarily eliminate the
+effects of external variation on a single measurement simply by executing the benchmark a
+large number of times.} Whether or not increasing $n$ can render the delay factor term
+neglible depends entirely on the trigger count configuration, which, as we discussed in
+Section~\ref{sec:environment}, is not easily controlled in practice.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:protocol}
@@ -494,37 +502,46 @@ $(n^{(i)}, [\hat{t}_{\textrm{min}}]^{(i)}_n)$.}
 \label{fig:scaling}
 \end{figure}
 
-Given a benchmarkable program $P$ and a time budget $\tau_{budget}$, we'd like to define
-$n$, the number of executions of $P$ to perform for each timing measurement, such that a
-trial of our experiment...
+Given a benchmarkable program $P_0$ and a time budget $\tau_{\textrm{budget}}$, an execution
+strategy should maximize the number of timing measurements we make while minimizing the
+difference between $t_{P_0}$ and our estimates $\hat{t}_i = \frac{T_i}{n}$. Based on the
+first criteria, it is reasonable for our strategy to consist of repeatedly measuring $P_0$'s
+runtime until we have exhausted our time budget.
 
-\begin{itemize}
-    \item ...produces timing estimates as close to the lower bound $t_{min}$ as possible
-    \item ...minimizes the variance between timing measurements
-    \item ...maximizes the number of timing measurements we are able to obtain under the
-    constraint of $\tau_{budget}$
-\end{itemize}
+The sole remaining parameter available for optimization then becomes $n$, the number of
+program executions that performed per measurement. Our model shows that increasing $n$ can
+reduce error due to timer inaccuracy, but does not reliably reduce performance variations
+due to external sources. Furthermore, increasing $n$ increases the time required to perform
+a single measurement, thus decreasing the number of measurements we are able make within the
+time budget. For these reasons, we seek to design an algorithm for determining the
+\textit{minimal} value of $n$ necessary to overcome error due to timer inaccuracy. Given a
+timer accuracy $\tau_{\textrm{acc}}$ and a timer precision $\tau_{\textrm{prec}}$, our
+algorithm for determining the optimal value of $n$ is as follows:
 
-Given a timer accuracy $\tau_{acc}$ and a timer precision $\tau_{prec}$, our algorithm for
-tuning $n$ is as follows:
+\begin{algorithm}
+    \caption{estimating the optimal $n$ value}
+    \KwIn{$P_0$, $\tau_{\textrm{acc}}$, $\nu : t_i \to n_i$}
+    \KwOut{$n$}
+    For $i \in \{1, \dots \tau_{\textrm{acc}}\}$, measure the amount of time it takes
+    to perform $i$ executions of $P_0$, resulting in a collection of timing measurements
+    $T_1, \dots T_{\tau_{\textrm{acc}}}$.
 
-\begin{enumerate}
-    \item For $n \in \{1...\tau_{acc}\}$, measure the amount of time it takes to perform $n$
-    executions of $P$. The result of this step is a collection of timing measurements $T_n$
-    for all $n$.
-    \item From the derived timing estimates $t_i = T_i / i$, select the minimum timing
-    estimate $\hat{t}_{min}$.
-    \item To obtain $n$, plug $\hat{t}_{min}$ into an oracle function $\nu(t_i) \to n_i$.
-    Given $\tau_{acc}$ and $\tau_{prec}$, the properties of $\nu(t)$ are as follows:
-    \begin{itemize}
-        \item $\nu(\tau_{prec}) \approx \tau_{acc}$
-        \item $\nu(\tau_{acc}) \approx \text{small} (\sim 10)$
-        \item $\nu(t \gg \tau_{acc}) \approx 1$
-        \item $\frac{d\nu}{dt}\big|_{t \approx \tau_{prec}} = \text{close to zero}$
-        \item free of discontinuities \TODO{how to say this correctly since the range is
-        discretized}
-    \end{itemize}
-\end{enumerate}
+    Estimate $t_{P_0}$ as $\hat{t}_{P_0} = \textrm{min}(\frac{T_1}{1}, \dots \frac{T_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}})$.
+
+    Evaluate $\nu(\hat{t}_{P_0})$ to obtain a value of $n$ to use for all subsequent timing measurements of $P_0$.
+\end{algorithm}
+
+%     To obtain $n$, plug  into an oracle function $\nu(t_i) \to n_i$.
+%     Given $\tau_{\textrm{acc}}$ and $\tau_{\textrm{prec}}$, the properties of $\nu(t)$ are as follows:
+%     \begin{itemize}
+%         \item $\nu(\tau_{\textrm{prec}}) \approx \tau_{\textrm{acc}}$
+%         \item $\nu(\tau_{\textrm{acc}}) \approx \text{small } (\sim 10)$
+%         \item $\nu(t \gg \tau_{\textrm{acc}}) \approx 1$
+%         \item $\frac{d\nu}{dt}\big|_{t \approx \tau_{\textrm{prec}}} = \text{close to zero}$
+%         \item free of discontinuities \TODO{how to say this correctly since the range is
+%         discretized}
+%     \end{itemize}
+% \end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:hypotesting}
