@@ -402,25 +402,22 @@ $P_0$.
 
 \subsection{Extreme behaviors of the model}
 
-Recall that $k$ is the number of instructions in $P_0$. In the extreme case where all
-$p^{(i)[j]} = 1$, all $X_P^{(i)} = k$ such that $t_P = t_{P_0} + k \sum_{i} \tau^{(i)}$. If
-we assume that the number of delay factors is fixed, then the sum over $i$ is a constant,
-and the upper bound on $t_P$ scales linearly with $k$.
+
 
 In the opposite extreme case, where all $p^{(i)[j]} = 0$, all $X_P^{(i)} = 0$ such that $t_P =
 t_{P_0}$. Thus, the lower bound on $t_P$ is simply $t_{P_0}$.
 
-It is possible that neither of these extreme behaviors ever occur in reality, but among the
-trigger count configurations encountered in a given experiment, there must be at least one
-configuration which maximizes $t_P$ to some value $t_{\textrm{max}} \le t_{P_0} + k
-\sum_{i} \tau^{(i)}$, and at least one configuration which minimizes $t_P$ to some value
-$t_{\textrm{min}} \ge t_{P_0}$.
-
-Rephrasing these properties in the language of statisitics, there must exist some critical
-time $t_{\textrm{max}}$ for which the probability density function (pdf) $f_{t_P}(\xi)$
-of $t_P$ obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi > t_{\textrm{max}}$, and some
-critical time $t_{\textrm{min}}$ for which $f_{t_P}(\xi) = 0 \; \forall \; \xi <
-t_{\textrm{min}}$.
+% It is possible that neither of these extreme behaviors ever occur in reality, but among the
+% trigger count configurations encountered in a given experiment, there must be at least one
+% configuration which maximizes $t_P$ to some value $t_{\textrm{max}} \le t_{P_0} + k
+% \sum_{i} \tau^{(i)}$, and at least one configuration which minimizes $t_P$ to some value
+% $t_{\textrm{min}} \ge t_{P_0}$.
+%
+% Rephrasing these properties in the language of statisitics, there must exist some critical
+% time $t_{\textrm{max}}$ for which the probability density function (pdf) $f_{t_P}(\xi)$
+% of $t_P$ obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi > t_{\textrm{max}}$, and some
+% critical time $t_{\textrm{min}}$ for which $f_{t_P}(\xi) = 0 \; \forall \; \xi <
+% t_{\textrm{min}}$.
 
 \subsection{Incorporating measurement into the model}
 
@@ -451,43 +448,51 @@ An observed timing measurement $T$ of a single execution of $Q$ can be decompose
 follows:
 
 \begin{align}
-    T &= t_{Q_0} + \epsilon_{\textrm{acc}} + \sum_{i} X_Q^{(i)} \tau^{(i)} \\ \nonumber
-      &= n \cdot t_{P_0} + \epsilon_{\textrm{acc}} + \sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}
+    T &= t_{Q} + \epsilon \\ \nonumber
+      &= t_{Q_0} + \sum_{i} X_Q^{(i)} \tau^{(i)} + \epsilon \\ \nonumber
+      &= n \cdot t_{P_0} + \sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)} + \epsilon
 \end{align}
 
-where $\epsilon_{\textrm{acc}}$ is the error due to insufficient timer accuracy. We assume
-that $\epsilon_{\textrm{acc}}$ is symmetrically distributed between $-\tau_{\textrm{acc}}$
-and $\tau_{\textrm{acc}}$.
+where $\epsilon$ is the error due to timer inaccuracy, subject to the
+constraint $-\tau_{\textrm{acc}} \le \epsilon \le \tau_{\textrm{acc}}$.
 
 We can obtain a naive estimate for $t_{P_0}$ by dividing $T$ by $n$:
 
 \begin{equation}
-    \frac{T}{n} = t_{P_0} + \frac{\epsilon_{\textrm{acc}}}{n} + \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}}{n}
+    \frac{T}{n} = t_{P_0} + \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)} + \epsilon}{n}
 \end{equation}
 
-In the limit of large $n$, $\frac{\epsilon_{\textrm{acc}}}{n}$ goes to zero, but the
-behavior of the delay factor term is less clear:
+In the limit of large $n$, $\frac{\epsilon}{n}$ goes to zero, but the behavior of the delay
+factor term is less clear:
 
 \begin{equation}
     \lim_{n\to\infty} \frac{T}{n} = t_{P_0} + \lim_{n\to\infty} \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}}{n}
 \end{equation}
 
-Previously, we derived a tight upper bound on the delay factor term from the worst case
-where $p^{(i)[j]} = 1$. By examining this worst case in the limit of large $n$, we see that
-the delay factor term can dwarf $t_{P_0}$ regardless of the number of executions of $P_0$
-performed during the measurement:
+While the exact behavior of the delay factor term depends on the random variables
+$X_Q^{(i)}$, we can derive an achievable tight upper bound on the delay factor term whose
+limit as $n \to \infty$ can be evaluated. Consider the worst case where all $x_Q^{(i)[j]} =
+1$, such that all $X_Q^{(i)} = nk$. The delay factor term then reduces as:
+
+\begin{align}
+    \sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)} &= \sum_{i} \sum_{j=1}^{nk} \tau^{(i)} \\ \nonumber
+                                                     &= nk \sum_{i} \tau^{(i)}
+\end{align}
+
+Plugging Eq~\ref{eq:10} into Eq~\ref{eq:9}, we see that in the worst case the delay factor
+term can dwarf $t_{P_0}$ regardless of the number of executions of $P_0$ performed during
+the measurement:
 
 \begin{align}
     \lim_{n\to\infty} \frac{T}{n} &= t_{P_0} + \lim_{n\to\infty} \frac{nk \sum_{i} \tau^{(i)}}{n} \\ \nonumber
-                                  &= t_{P_0} + k \sum_{i} \tau^{(i)} \\ \nonumber
-                                  &\ge t_{\textrm{max}}
+                                  &= t_{P_0} + k \sum_{i} \tau^{(i)}
 \end{align}
 
-Eq~\ref{eq:10} is a key result of our model: \textbf{One cannot necessarily eliminate the
-effects of external variation on a single measurement simply by executing the benchmark a
-large number of times.} Whether or not increasing $n$ can render the delay factor term
-neglible depends entirely on the trigger count configuration, which, as we discussed in
-Section~\ref{sec:environment}, is not easily controlled in practice.
+Eq~\ref{eq:11} is a key result of our model: \textbf{One cannot reliably eliminate the
+effects of external variations simply by executing the benchmark a large number of times.}
+Whether or not increasing $n$ can render the delay factor term neglible depends entirely on
+the random variables $X_Q^{(i)}$, which, recalling our discussion in
+Section~\ref{sec:environment}, are not easily controlled in practice.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:protocol}
@@ -502,25 +507,23 @@ $(n^{(i)}, [\hat{t}_{\textrm{min}}]^{(i)}_n)$.}
 \label{fig:scaling}
 \end{figure}
 
-Given a benchmarkable program $P_0$ and a time budget $\tau_{\textrm{budget}}$, an execution
-strategy should maximize the number of timing measurements we make while minimizing the
-difference between $t_{P_0}$ and our estimates $\hat{t}_i = \frac{T_i}{n}$. Based on the
-first criteria, it is reasonable for our strategy to consist of repeatedly measuring $P_0$'s
-runtime until we have exhausted our time budget.
+Given $P_0$ (the initial benchmarkable program), $n$ (the number of executions of $P_0$ per
+timing measurement), and $\tau_{\textrm{budget}}$ (the user's time budget), an experiment
+consists of making several timing measurements $T_1, \dots T_m$ until we have exhausted
+$\tau_{\textrm{budget}}$.
 
-The sole remaining parameter available for optimization then becomes $n$, the number of
-program executions that performed per measurement. Our model shows that increasing $n$ can
-reduce error due to timer inaccuracy, but does not reliably reduce performance variations
-due to external sources. Furthermore, increasing $n$ increases the time required to perform
-a single measurement, thus decreasing the number of measurements we are able make within the
-time budget. For these reasons, we seek to design an algorithm for determining the
-\textit{minimal} value of $n$ necessary to overcome error due to timer inaccuracy. Given a
-timer accuracy $\tau_{\textrm{acc}}$ and a timer precision $\tau_{\textrm{prec}}$, our
-algorithm for determining the optimal value of $n$ is as follows:
+Since $P_0$ and $\tau_{\textrm{budget}}$ are fixed by the user, the only parameter we are
+free to optimize is $n$. Recalling our model, increasing $n$ can cause $\frac{\epsilon}{n}
+\to 0$, thus increasing the accuracy of our estimates $\frac{T_1}{n}, \dots \frac{T_m}{n}$.
+However, increasing $n$ also increases the time required to perform a single measurement,
+thus decreasing $m$, the number of measurements we can take within the time budget. We can
+strike a reasonable balance between maximizing measurement accuracy and maximizing $m$ by
+selecting the minimal value of $n$ that renders $\frac{\epsilon}{n} \ll t_{P_0}$. Our
+algorithm for guessing this value is as follows:
 
 \begin{algorithm}
     \caption{estimating the optimal $n$ value}
-    \KwIn{$P_0$, $\tau_{\textrm{acc}}$, $\nu : t_i \to n_i$}
+    \KwIn{$P_0$, $\tau_{\textrm{acc}}$, an oracle function $\nu : t \to n$}
     \KwOut{$n$}
     For $i \in \{1, \dots \tau_{\textrm{acc}}\}$, measure the amount of time it takes
     to perform $i$ executions of $P_0$, resulting in a collection of timing measurements
@@ -528,8 +531,36 @@ algorithm for determining the optimal value of $n$ is as follows:
 
     Estimate $t_{P_0}$ as $\hat{t}_{P_0} = \textrm{min}(\frac{T_1}{1}, \dots \frac{T_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}})$.
 
-    Evaluate $\nu(\hat{t}_{P_0})$ to obtain a value of $n$ to use for all subsequent timing measurements of $P_0$.
+    Evaluate $\nu(\hat{t}_{P_0})$ to obtain $n$.
 \end{algorithm}
+
+This algorithm only ever needs to be applied once per benchmark, as the optimal value of $n$
+for a given $P_0$ can be cached for use in subsequent experiments. Thus, we consider this
+algorithm a pre-processing step that does not count against our time budget
+$\tau_{\textrm{acc}}$.
+
+% $E = \sum_{i} X_Q^{(i)} \tau^{(i)}$.
+
+% Given the success probabilities $p^{(i)[j]}$ of the Bernoulli variables $x_Q^{(i)[j]}$,
+% there is a minimal observable value of $E$ that occurs with nonzero probability. This value,
+% which we'll denote $E_{\textrm{min}}$, may not necessarily correspond to $E = 0$, the value
+% attained in the theoretical best case where no delay factors trigger during program
+% execution. If at least one of the success probabilities is $1$, and the number of
+% instructions in $Q_0$ is $nk$, then $\sum_i X_Q^{(i)} \ge nk$ and thus $E = 0$ occurs with
+% zero probability.
+%
+% \begin{align}
+%     \hat{t}_{P_0} &= \textrm{min}(\frac{T_1}{1}, \dots \frac{T_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}}) \\ \nonumber
+%                   &= t_{P_0} + \textrm{min}(\frac{E_1}{1}, \dots \frac{E_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}}) + \textrm{min}(\frac{\epsilon_1}{1}, \dots \frac{\epsilon_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}}) \\ \nonumber
+%                   &= t_{P_0} + \hat{E}_{\textrm{min}} + \hat{\epsilon}_{\textrm{min}}
+% \end{align}
+%
+% where $-1 \le \hat{\epsilon}_{\textrm{min}} \le 1$, since
+% $\frac{-\tau_{\textrm{acc}}}{\tau_{\textrm{acc}}} \le
+% \frac{\epsilon_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}} \le
+% \frac{-\tau_{\textrm{acc}}}{\tau_{\textrm{acc}}}$.
+% Since the error is contrained to timer precision at $n = \tau_{\textrm{acc}}$, we do
+% not consider it necessary to attempt greater values of $n$.
 
 %     To obtain $n$, plug  into an oracle function $\nu(t_i) \to n_i$.
 %     Given $\tau_{\textrm{acc}}$ and $\tau_{\textrm{prec}}$, the properties of $\nu(t)$ are as follows:
