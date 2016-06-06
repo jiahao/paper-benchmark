@@ -6,6 +6,8 @@
 \usepackage{amsmath}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{subcaption}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 % Note that the amsmath package sets \interdisplaylinepenalty to 10000
 % thus preventing page breaks from occurring within multiline equations. Use:
 %\interdisplaylinepenalty=2500
@@ -58,23 +60,22 @@ Email: \{jiahao,jrevels\}@csail.mit.edu}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-We propose a rigorous methodology for automated microbenchmarking and regression detection
-in the presence of timer error, OS jitter and other environmental fluctuations. By examining
-data obtained from Julia microbenchmarks, we demonstrate the ways in which timing
-distributions can violate many of the statistical assumptions made by other benchmarking
-frameworks. From our experimental observations, we construct a model and an accompanying
-microbenchmarking strategy which purposefully avoids these assumptions. This strategy makes
-efficient use of user time constraints by simultaneously maximizing the number of
-measurements per trial while minimizing inter-measurement timing variations, rendering it
-suitable for continuous integration (CI) pipelines, even when applied to relatively large
-benchmark suites. Using our model, we formulate a robust, nonparametric hypothesis test that
-makes use of the bootstrap resampling method to estimate the statistical significance of
-observed variations in execution time. We test our methodology on a small collection of mock
-Julia benchmarks, discussing where it succeeds relative to other methods as well as pointing
-out potential pitfalls. Finally, we discuss a prototype implementation of the proposed
-method that was recently released to aid in the development of the Julia language and
-ecosystem, which has already caught and prevented several performance regressions in Julia's
-base library.
+We propose a rigorous methodology for automated benchmarking and regression detection in the
+presence of timer error, OS jitter and other environmental fluctuations. By examining data
+obtained from Julia benchmarks, we demonstrate the ways in which timing distributions can
+violate many of the statistical assumptions made by other benchmarking frameworks. From our
+experimental observations, we construct a model and an accompanying benchmarking
+strategy which purposefully avoids these assumptions. This strategy makes efficient use of
+user time constraints by simultaneously maximizing the number of measurements per trial
+while minimizing inter-measurement timing variations, rendering it suitable for continuous
+integration (CI) pipelines, even when applied to relatively large benchmark suites. Using
+our model, we formulate a robust, nonparametric hypothesis test that makes use of the
+bootstrap resampling method to estimate the statistical significance of observed variations
+in execution time. We test our methodology on a small collection of mock Julia benchmarks,
+discussing where it succeeds relative to other methods as well as pointing out potential
+pitfalls. Finally, we discuss a prototype implementation of the proposed method that was
+recently released to aid in the development of the Julia language and ecosystem, which has
+already caught and prevented several performance regressions in Julia's base library.
 \end{abstract}
 
 \IEEEpeerreviewmaketitle
@@ -85,30 +86,42 @@ base library.
 \label{sec:intro}
 \section{Introduction}
 
-Developers of high performance applications often rely on microbenchmark suites to determine
-the impact of code changes on program performance. Despite the importance of these suites in
+Developers of high performance applications often rely on benchmark suites to determine the
+impact of code changes on program performance. Despite the importance of these suites in
 safeguarding against performance regressions, developers often run and interpret them in an
-ad hoc manner. The disregard for proper interpretation wastes development time and may
-lead to misguided development decisions that worsen performance.
+ad hoc manner. This disregard for proper experimental methodology wastes development time
+and may lead to misguided decisions that worsen performance.
 
-In this paper, we consider the problem of developing a microbenchmark suite
-suitable for a continuous integration (CI) workflow. We define a microbenchmark
-as a benchmark whose expected execution time is on the order of 1 microsecond
-or shorter,
-The goal is to detect reproducibly and automatically when performance regressions occurred,
-while running the entire suite in a reasonable amount of time.
-In practice, the complexity of modern hardware and software enviroments introduce
-undesirable variations across timing measurements of the same benchmark, which
-reduce the reliability of detecting performance regressions.
+In this paper, we consider the problem of designing a language- and platform-agnostic
+benchmarking methodology for rigorously testing large benchmark suites within reasonable
+time constraints, rendering it suitable for continuous integration (CI) pipelines and manual
+user workflows. Our goal is to define an experimental protocol and a statistical test for
+automatically and reproducibly detecting performance regressions with respect to a given
+benchmark suite, quantifying detection confidence using rigorous estimates of statistical
+significance.
 
+In practice, the complexity of modern hardware and software enviroments reduces the
+reliability of regression detection frameworks by introducing undesirable variations in
+timing measurements and application performance. System quiescence research has acknowledged
+that these variations induce non-Gaussianity in performance statistics. Despite this
+research, current statistical approaches to regression detection improperly assume the
+Gaussianity of timing measurement distributions. We present a statistical model that, in
+contrast, provides an explicitly non-Gaussian formulation of timing variations. We
+substantiate our model using data obtained from a small set of mock Julia benchmarks.
 
+\label{sec:timererror}
 \paragraph{The effects of timer measurement error}
-A single execution of a microbenchmark is too short to measure
-accurately by a system timer. Thus, it is necessary to execute the
-microbenchmarks multiple times to obtain an accurate timing measurement.
+
+Our methodology pays special attention to benchmarks whose expected execution time is on the
+order of 1 microsecond or shorter, which is quick enough that the benchmark is vulnerable to
+error due to insufficient system timer accuracy on modern platforms. A common technique for
+accurately measuring the runtime of these benchmarks is to time multiple executions of the
+benchmark, estimating the runtime of a single execution by dividing the measured time by the
+number of executions.
+
 \TODO{Cite strategies for orchestrating performance counters}
 
-
+\label{sec:environment}
 \paragraph{Controlling for environmental effects}
 Modern hardware and operating systems introduce many confounding factors that
 complicate a developer's ability to reason about variations in user-space
@@ -159,7 +172,7 @@ portability and thus decrease the likelihood of adoption.
 \TODO{cite/discuss Kalibera's paper on ``benchmarking in reasonable time'', and similar
 papers}
 
-
+\label{sec:stats}
 \subsection{Doing stastistics on timing measurements is hard}
 
 The myraid sources of environmental variation must all be mitigated against to
@@ -233,13 +246,12 @@ parameter~\cite{Hampel1971,Mytkowicz2009,Touati2013}.
 However, we will argue in the next section that the minimum is a more appropriate
 location parameter for regression benchmarking.
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:notation}
 \section{Notation}
 
-The rest of this paper utilizes a consistent notation for discussing the various statistical
-and measured quantities related to microbenchmarking. We define this notation here:
+The rest of this paper utilizes a consistent notation for discussing various statistical and
+measured quantities related to benchmarking. We define this notation here:
 
 \begin{itemize}
     \item
@@ -289,9 +301,9 @@ and measured quantities related to microbenchmarking. We define this notation he
     \end{itemize}
 
     \item
-    $\epsilon^{(i)[j]} = x^{(i)[j]} \tau^{(i)}$ is the \textbf{time delay} due to the
+    $\epsilon^{(i)[j]} = x_P^{(i)[j]} \tau^{(i)}$ is the \textbf{time delay} due to the
     $i^{\textrm{th}}$ \textbf{delay factor} for delay instruction $D^{[j]}$.  Specifically,
-    $\tau^{(i)}$ is the factor's \textbf{time scale} and $x^{(i)[j]}$ is the factor's
+    $\tau^{(i)}$ is the factor's \textbf{time scale} and $x_P^{(i)[j]}$ is the factor's
     \textbf{trigger coefficient} for $D^{[j]}$. Delay factor indices are written using
     parenthesized superscripts, $\cdot^{(i)}$.
 
@@ -316,80 +328,180 @@ and measured quantities related to microbenchmarking. We define this notation he
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:model}
-\section{A better statistical interpretation of microbenchmark timing distributions}
+\section{A better statistical interpretation of benchmark timing distributions}
 
-In this section, we present a statistical description of microbenchmark behavior that avoids
+In this section, we present a statistical description of benchmark behavior that avoids
 problematic assumptions of normality or identical timing distributions between benchmarks.
-This model will drive the design of our experimental protocol and hypothesis testing
-formulation, discussed in future sections.
+This model will drive the design of the experimental protocol and the hypothesis test
+that we discuss in future sections.
 
 \subsection{The underlying model for program execution}
 
 Consider an initial benchmarkable user program $P_0$, whose output is deterministic and
-identical for every execution. $P_0$ can be specified by as a sequence of instructions
-$I^{[i]}$:
+identical for every execution of the program. $P_0$ can be specified by as a sequence of
+instructions $I^{[i]}$:
 
 \begin{equation}
     P_0 = \left[I^{[1]}, I^{[2]}, \dots I^{[k]}\right]
 \end{equation}
 
-We define an \textit{instruction} as a specification of a state transition that takes the
-executing machine from an initial state to a desired output state. In an idealized universe,
-we could assume that the state transition for instruction $I^{[i]}$ takes exactly
-$\tau^{[i]}$ time, such that the total runtime of $P_0$ is $t_{P_0} = \sum_{i=1}^N
-\tau^{[i]}$.
+Each instruction $I^{[i]}$ specifies a state transition that takes the executing machine
+from an initial state to a desired output state. In an idealized universe, we could assume
+that the state transition for instruction $I^{[i]}$ takes exactly $\tau^{[i]}$ time, such
+that the total runtime of $P_0$ is $t_{P_0} = \sum_{i=1}^N \tau^{[i]}$.
 
-In reality, the machine and operating system within which $P_0$ runs are vulnerable to the
-factors described in Section~\ref{sec:challenges}. These factors may cause the computer to
-undergo zero or more intermediary state transitions before achieving the state transistion
-specified by instruction $I^{[i]}$. Since these factors \textit{delay} the completion of the
-original instructions, we refer to them as \textit{delay factors}\footnote{Technically,
-there are some causes of timing variations which might speed up the execution of a program,
-such as frequent scaling \TODO{cite}. However, these factors number far fewer than those
-that slow down execution of a program, and as such, are more easily controlled. Thus, we
-only focus on the latter, which we have seen to stochastically dominate the former
-\TODO{Jiahao: fix this abuse of terminology}}. We can account for these delay factors by
-modeling them as ``delay instructions'' $D^{[i]}$, which are interleaved with $P_0$'s
-original instructions to produce a new program $P$:
+In reality, the machine and operating system executing $P_0$ are vulnerable to the factors
+described in Section~\ref{sec:challenges}. These factors may cause the computer to undergo
+zero or more intermediary state transitions before achieving the state transistion specified
+by instruction $I^{[i]}$. Since these factors \textit{delay} the completion of the original
+instructions, we refer to them as \textit{delay factors}\footnote{Technically, there are
+some causes of timing variations which might speed up the execution of a program, such as
+frequent scaling \TODO{cite}. However, these factors number far fewer than those that slow
+down execution of a program, and as such, are more easily controlled. Thus, we only focus on
+the latter, which we have seen to stochastically dominate the former \TODO{Jiahao: fix this
+abuse of terminology}}. We can account for these additional state transitions by modeling
+them as \textit{delay instructions} $D^{[i]}$, which are interleaved with $P_0$'s original
+instructions to produce a new program $P$:
 
 \begin{equation}
     P = \left[I^{[1]}, D^{[1]}, I^{[2]}, D^{[2]}, \dots I^{[k]}, D^{[k]}\right]
 \end{equation}
 
-While the semantics of $P_0$ and $P$ are identical, the presence of the delay instructions
-means that $t_P \ge t_{P_0}$, since $t_P = t_{P_0} + \sum_{j} \tau_{D^{[j]}}$, where
-$\tau_{D^{[j]}}$ is the execution time of $D^{[j]}$.
+We assume that the delay instructions do not interfere with the semantics of $P_0$, such
+that $P$ and $P_0$ are characterized by an identical mapping of inputs to outputs. While
+this restriction forces $P$ and $P_0$ to share the same semantics, it does not force them
+to have the same runtime. The runtime of $P$ is
 
-$\tau_{D^{[j]}}$ can be further decomposed into the runtime contributions of individiual
-delay factors. Let us imagine the delay factor $i$ can discretely ``trigger'' once during
-the execution of $D^{[j]}$ with probability $p^{(i)}$.Assuming that every triggering of $i$
-takes a fixed time $\tau^{(i)}$, we can express $D^{[j]}$'s runtime as the \textit{random
-variable} $\tau_{D^{[j]}} = \sum_{i=1} x^{(i)}_j \tau^{(i)}$, where $x^{(i)}_j$ is a boolean
-\textit{trigger coefficient}. Summing the trigger coefficients for the $i^{\textrm{th}}$
-delay factor over all delay instructions gives us a \textit{trigger count}
-$X_P^{(i)}$ for the entire program $P$.
+\begin{equation}
+    t_P = t_{P_0} + \sum_{j} \tau^{[j]}_D
+\end{equation}
+
+where $\tau^{[j]}_D$ is the execution time of $D^{[j]}$. Since $\tau^{[j]}_D \ge 0$, it
+follows that $t_P \ge t_{P_0}$.
+
+$\tau^{[j]}_D$ can be further decomposed into the runtime contributions of individual delay
+factors. Let us imagine the delay factor $i$ can discretely ``trigger'' once during the
+execution of $D^{[j]}$ with probability $p^{(i)[j]}$. Assuming that every triggering of $i$
+takes a fixed time $\tau^{(i)}$, then
+
+\begin{equation}
+    \tau^{[j]}_D = \sum_{i} x_P^{(i)[j]} \tau^{(i)}
+\end{equation}
+
+where $x_P^{(i)[j]}$ is a \textit{Bernoulli random variable} with success probability
+$p^{(i)[j]}$. We denote the total number of times the $i^{\textrm{th}}$ delay factor was
+triggered during the execution of $P$ as the \textit{trigger count} $X_P^{(i)} = \sum_{j}
+x_P^{(i)[j]}$. Since the trigger count is a sum of independent Bernoulli random variables with
+nonidentical success probabilities, $X_P^{(i)}$ is itself a random variable that follows a
+\textit{Poisson binomial distribution} parameterized by the success probabilities
+$\left[p^{(i)[1]}, \dots p^{(i)[k]}\right]$.
 
 Our final expression for $t_P$ in terms of these quantities is:
 
 \begin{align}
-t_P &= t_{P_0} + \sum_{j} \tau_{D^{[j]}} = t_{P_0} + \sum_{i} X_P^{(i)} \tau^{(i)} \\
-    &= t_{P_0} + \sum_{j} \sum_{i} x^{(i)[j]} \tau^{(i)}
+t_P &= t_{P_0} + \sum_{j} \tau^{[j]}_D \\ \nonumber
+    &= t_{P_0} + \sum_{i} \sum_{j=1}^{k} x_P^{(i)[j]} \tau^{(i)} \\ \nonumber
+    &= t_{P_0} + \sum_{i} X_P^{(i)} \tau^{(i)}
 \end{align}
 
-\TODO{Should we still discuss the various distributions that can arise from the limiting behaviors of the model?}
+Thus, we've shown that our model treats $t_P$ as a random variable whose distribution is not
+necessarily Gaussian, but rather depends on the trigger probabilities $p^{(i)[j]}$ that are
+determined by the combined behavior of the delay factors and the initial benchmark program
+$P_0$.
 
-Note that if $\sum_{i} X_P^{(i)} = 0$, then $t_P = t_{P_0}$. For some machines, this ideal
-behavior may not be possible, but there must be at least one trigger count configuration
-which minimizes $t_P$ to some value $[t_P]_{\textrm{min}}$, invoking the fewest possible
-delay factors that lead to smallest possible increase in execution time over $t_{P_0}$.
-Rephrasing this property in the language of statisitics, there must exist some critical time
-$[t_P]_{\textrm{min}}$ for which the probability density function (pdf) $f_{t_P}(\xi)$ of
-$t_P$ obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi < [t_P]_{\textrm{min}}$
+\subsection{Extreme behaviors of the model}
 
-\subsection{The model for timing measurements}
 
-Before our model is complete, we must account for measurement error due to \textit{timer
-accuracy}.
+
+In the opposite extreme case, where all $p^{(i)[j]} = 0$, all $X_P^{(i)} = 0$ such that $t_P =
+t_{P_0}$. Thus, the lower bound on $t_P$ is simply $t_{P_0}$.
+
+% It is possible that neither of these extreme behaviors ever occur in reality, but among the
+% trigger count configurations encountered in a given experiment, there must be at least one
+% configuration which maximizes $t_P$ to some value $t_{\textrm{max}} \le t_{P_0} + k
+% \sum_{i} \tau^{(i)}$, and at least one configuration which minimizes $t_P$ to some value
+% $t_{\textrm{min}} \ge t_{P_0}$.
+%
+% Rephrasing these properties in the language of statisitics, there must exist some critical
+% time $t_{\textrm{max}}$ for which the probability density function (pdf) $f_{t_P}(\xi)$
+% of $t_P$ obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi > t_{\textrm{max}}$, and some
+% critical time $t_{\textrm{min}}$ for which $f_{t_P}(\xi) = 0 \; \forall \; \xi <
+% t_{\textrm{min}}$.
+
+\subsection{Incorporating measurement into the model}
+
+The previous sections presented a model that describes theoretical program execution times,
+but said nothing about the behavior of the timing \textit{measurements} that are observed in
+experiment.
+
+As discussed in Section~\ref{sec:timererror}, a timing measurement often incorporates
+multiple benchmark executions in order to mitigate error due to timer inaccuracy. To
+simplify our analysis, we can represent $n$ executions of a program $P_0$ comprised of $k$
+instructions as a single execution of a program $Q_0$, which is the result of concatenating
+$n$ copies of $P_0$:
+
+\begin{align}
+P_0 &= \left[I^{[1]}, I^{[2]}, \dots I^{[k]} \right] \\ \nonumber
+Q_0 &= \left[P_0, P_0, \dots P_0 \right] \\ \nonumber
+    &= \left[I_{P}^{[1]}, \dots I_{P}^{[k]}, I_{P}^{[1]}, \dots I_{P}^{[k]}, I_{P}^{[1]}, \dots I_{P}^{[k]} \right] \\ \nonumber
+    &= \left[I_{Q}^{[1]}, I_{Q}^{[2]}, \dots I_{Q}^{[nk]} \right]
+\end{align}
+
+such that instruction $I_{P}^{[i]} = I_{Q}^{[i + ck]}$ for $c \in \{0, \dots n\}$. Following
+the convention of the previous section, we use $Q$ to denote the program that results from
+interleaving $Q_0$ with delay instructions. Note that $Q$ is \textit{not} simply $n$
+repetitions of $P$, since $Q$'s delay instructions do not obey the repetition relation
+of the original instructions ($D_{P}^{[i]} \ne D_{Q}^{[i + ck]}$).
+
+An observed timing measurement $T$ of a single execution of $Q$ can be decomposed as
+follows:
+
+\begin{align}
+    T &= t_{Q} + \epsilon \\ \nonumber
+      &= t_{Q_0} + \sum_{i} X_Q^{(i)} \tau^{(i)} + \epsilon \\ \nonumber
+      &= n \cdot t_{P_0} + \sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)} + \epsilon
+\end{align}
+
+where $\epsilon$ is the error due to timer inaccuracy, subject to the
+constraint $-\tau_{\textrm{acc}} \le \epsilon \le \tau_{\textrm{acc}}$.
+
+We can obtain a naive estimate for $t_{P_0}$ by dividing $T$ by $n$:
+
+\begin{equation}
+    \frac{T}{n} = t_{P_0} + \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)} + \epsilon}{n}
+\end{equation}
+
+In the limit of large $n$, $\frac{\epsilon}{n}$ goes to zero, but the behavior of the delay
+factor term is less clear:
+
+\begin{equation}
+    \lim_{n\to\infty} \frac{T}{n} = t_{P_0} + \lim_{n\to\infty} \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}}{n}
+\end{equation}
+
+While the exact behavior of the delay factor term depends on the random variables
+$X_Q^{(i)}$, we can derive an achievable tight upper bound on the delay factor term whose
+limit as $n \to \infty$ can be evaluated. Consider the worst case where all $x_Q^{(i)[j]} =
+1$, such that all $X_Q^{(i)} = nk$. The delay factor term then reduces as:
+
+\begin{align}
+    \sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)} &= \sum_{i} \sum_{j=1}^{nk} \tau^{(i)} \\ \nonumber
+                                                     &= nk \sum_{i} \tau^{(i)}
+\end{align}
+
+Plugging Eq~\ref{eq:10} into Eq~\ref{eq:9}, we see that in the worst case the delay factor
+term can dwarf $t_{P_0}$ regardless of the number of executions of $P_0$ performed during
+the measurement:
+
+\begin{align}
+    \lim_{n\to\infty} \frac{T}{n} &= t_{P_0} + \lim_{n\to\infty} \frac{nk \sum_{i} \tau^{(i)}}{n} \\ \nonumber
+                                  &= t_{P_0} + k \sum_{i} \tau^{(i)}
+\end{align}
+
+Eq~\ref{eq:11} is a key result of our model: \textbf{One cannot reliably eliminate the
+effects of external variations simply by executing the benchmark a large number of times.}
+Whether or not increasing $n$ can render the delay factor term neglible depends entirely on
+the random variables $X_Q^{(i)}$, which, recalling our discussion in
+Section~\ref{sec:environment}, are not easily controlled in practice.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:protocol}
@@ -399,42 +511,77 @@ accuracy}.
 \centering
 \includegraphics[width=0.45\textwidth]{figures/fig2/linear_scan_branchsum}
 \caption{A plot of many trials for a single benchmark, where each trial scans through
-increasing values for $n$. Note the smooth curve and asymptotic lower bound of the minima
+increasing values of $n$. Note the smooth curve and asymptotic lower bound of the minima
 $(n^{(i)}, [\hat{t}_{\textrm{min}}]^{(i)}_n)$.}
 \label{fig:scaling}
 \end{figure}
 
-Given a benchmarkable program $P$ and a time budget $\tau_{budget}$, we'd like to define
-$n$, the number of executions of $P$ to perform for each timing measurement, such that a
-trial of our experiment...
+Given $P_0$ (the initial benchmarkable program), $n$ (the number of executions of $P_0$ per
+timing measurement), and $\tau_{\textrm{budget}}$ (the user's time budget), an experiment
+consists of making several timing measurements $T_1, \dots T_m$ until we have exhausted
+$\tau_{\textrm{budget}}$.
 
-\begin{itemize}
-    \item ...produces timing estimates as close to the lower bound $t_{min}$ as possible
-    \item ...minimizes the variance between timing measurements
-    \item ...maximizes the number of timing measurements we are able to obtain under the
-    constraint of $\tau_{budget}$
-\end{itemize}
+Since $P_0$ and $\tau_{\textrm{budget}}$ are fixed by the user, the only parameter we are
+free to optimize is $n$. Recalling our model, increasing $n$ can cause $\frac{\epsilon}{n}
+\to 0$, thus increasing the accuracy of our estimates $\frac{T_1}{n}, \dots \frac{T_m}{n}$.
+However, increasing $n$ also increases the time required to perform a single measurement,
+thus decreasing $m$, the number of measurements we can take within the time budget. We can
+strike a reasonable balance between maximizing measurement accuracy and maximizing $m$ by
+selecting the minimal value of $n$ that renders $\frac{\epsilon}{n} \ll t_{P_0}$. Our
+algorithm for guessing this value is as follows:
 
-Given a timer accuracy $\tau_{acc}$ and a timer precision $\tau_{prec}$, our algorithm for
-tuning $n$ is as follows:
+\begin{algorithm}
+    \caption{estimating the optimal $n$ value}
+    \KwIn{$P_0$, $\tau_{\textrm{acc}}$, an oracle function $\nu : t \to n$}
+    \KwOut{$n$}
+    For $i \in \{1, \dots \tau_{\textrm{acc}}\}$, measure the amount of time it takes
+    to perform $i$ executions of $P_0$, resulting in a collection of timing measurements
+    $T_1, \dots T_{\tau_{\textrm{acc}}}$.
 
-\begin{enumerate}
-    \item For $n \in \{1...\tau_{acc}\}$, measure the amount of time it takes to perform $n$
-    executions of $P$. The result of this step is a collection of timing measurements $T_n$
-    for all $n$.
-    \item From the derived timing estimates $t_i = T_i / i$, select the minimum timing
-    estimate $\hat{t}_{min}$.
-    \item To obtain $n$, plug $\hat{t}_{min}$ into an oracle function $\nu(t_i) \to n_i$.
-    Given $\tau_{acc}$ and $\tau_{prec}$, the properties of $\nu(t)$ are as follows:
-    \begin{itemize}
-        \item $\nu(\tau_{prec}) \approx \tau_{acc}$
-        \item $\nu(\tau_{acc}) \approx \text{small} (\sim 10)$
-        \item $\nu(t \gg \tau_{acc}) \approx 1$
-        \item $\frac{d\nu}{dt}\big|_{t \approx \tau_{prec}} = \text{close to zero}$
-        \item free of discontinuities \TODO{how to say this correctly since the range is
-        discretized}
-    \end{itemize}
-\end{enumerate}
+    Estimate $t_{P_0}$ as $\hat{t}_{P_0} = \textrm{min}(\frac{T_1}{1}, \dots \frac{T_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}})$.
+
+    Evaluate $\nu(\hat{t}_{P_0})$ to obtain $n$.
+\end{algorithm}
+
+This algorithm only ever needs to be applied once per benchmark, as the optimal value of $n$
+for a given $P_0$ can be cached for use in subsequent experiments. Thus, we consider this
+algorithm a pre-processing step that does not count against our time budget
+$\tau_{\textrm{acc}}$.
+
+% $E = \sum_{i} X_Q^{(i)} \tau^{(i)}$.
+
+% Given the success probabilities $p^{(i)[j]}$ of the Bernoulli variables $x_Q^{(i)[j]}$,
+% there is a minimal observable value of $E$ that occurs with nonzero probability. This value,
+% which we'll denote $E_{\textrm{min}}$, may not necessarily correspond to $E = 0$, the value
+% attained in the theoretical best case where no delay factors trigger during program
+% execution. If at least one of the success probabilities is $1$, and the number of
+% instructions in $Q_0$ is $nk$, then $\sum_i X_Q^{(i)} \ge nk$ and thus $E = 0$ occurs with
+% zero probability.
+%
+% \begin{align}
+%     \hat{t}_{P_0} &= \textrm{min}(\frac{T_1}{1}, \dots \frac{T_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}}) \\ \nonumber
+%                   &= t_{P_0} + \textrm{min}(\frac{E_1}{1}, \dots \frac{E_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}}) + \textrm{min}(\frac{\epsilon_1}{1}, \dots \frac{\epsilon_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}}) \\ \nonumber
+%                   &= t_{P_0} + \hat{E}_{\textrm{min}} + \hat{\epsilon}_{\textrm{min}}
+% \end{align}
+%
+% where $-1 \le \hat{\epsilon}_{\textrm{min}} \le 1$, since
+% $\frac{-\tau_{\textrm{acc}}}{\tau_{\textrm{acc}}} \le
+% \frac{\epsilon_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}} \le
+% \frac{-\tau_{\textrm{acc}}}{\tau_{\textrm{acc}}}$.
+% Since the error is contrained to timer precision at $n = \tau_{\textrm{acc}}$, we do
+% not consider it necessary to attempt greater values of $n$.
+
+%     To obtain $n$, plug  into an oracle function $\nu(t_i) \to n_i$.
+%     Given $\tau_{\textrm{acc}}$ and $\tau_{\textrm{prec}}$, the properties of $\nu(t)$ are as follows:
+%     \begin{itemize}
+%         \item $\nu(\tau_{\textrm{prec}}) \approx \tau_{\textrm{acc}}$
+%         \item $\nu(\tau_{\textrm{acc}}) \approx \text{small } (\sim 10)$
+%         \item $\nu(t \gg \tau_{\textrm{acc}}) \approx 1$
+%         \item $\frac{d\nu}{dt}\big|_{t \approx \tau_{\textrm{prec}}} = \text{close to zero}$
+%         \item free of discontinuities \TODO{how to say this correctly since the range is
+%         discretized}
+%     \end{itemize}
+% \end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:hypotesting}
