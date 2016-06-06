@@ -225,7 +225,8 @@ The horizontal axis is the index of the trial, while the vertical axis is time.}
 
 Benchmark times usually do \textit{not} exhibit iid normal statistics,
 which are assumed in textbook comparisons using $t$-tests or
-$F$-ratios~\cite{Lilja2000}.
+$F$-ratios~\cite{Lilja2000} and in some benchmarking programs like AndroBench,
+which use a 3-sigma rule for defining outliers.
 Contrary to these standard assumptions,
 we see a wide variety of statistical behaviors in actual measurements;
 Figure~\ref{fig:meandistributions} shows that even for the four illustrative
@@ -236,6 +237,8 @@ The third benchmark shows a consistent drift, with the measured time increasing
 as the benchmark trial is rerun.
 The fourth benchmark shows a complicated distribution exhibiting bimodality and
 drift.
+Such nonideal statistics have also been observed in other
+studies~\cite{Gil2011,Chen2015,Rehn2015,Barrett2016}.
 In these situations, the standard tests have poor statistical
 power~\cite{Mytkowicz2009,Kalibera2013,Chen2015,Barrett2016}.
 Other authors have suggested removing outliers to improve
