@@ -412,12 +412,9 @@ necessarily Gaussian, but rather depends on the trigger probabilities $p^{(i)[j]
 determined by the combined behavior of the delay factors and the initial benchmark program
 $P_0$.
 
-\subsection{Extreme behaviors of the model}
-
-
-
-In the opposite extreme case, where all $p^{(i)[j]} = 0$, all $X_P^{(i)} = 0$ such that $t_P =
-t_{P_0}$. Thus, the lower bound on $t_P$ is simply $t_{P_0}$.
+% OLD %%%%
+% In the opposite extreme case, where all $p^{(i)[j]} = 0$, all $X_P^{(i)} = 0$ such that $t_P =
+% t_{P_0}$. Thus, the lower bound on $t_P$ is simply $t_{P_0}$.
 
 % It is possible that neither of these extreme behaviors ever occur in reality, but among the
 % trigger count configurations encountered in a given experiment, there must be at least one
@@ -430,6 +427,7 @@ t_{P_0}$. Thus, the lower bound on $t_P$ is simply $t_{P_0}$.
 % of $t_P$ obeys $f_{t_P}(\xi) = 0 \; \forall \; \xi > t_{\textrm{max}}$, and some
 % critical time $t_{\textrm{min}}$ for which $f_{t_P}(\xi) = 0 \; \forall \; \xi <
 % t_{\textrm{min}}$.
+% OLD %%%%
 
 \subsection{Incorporating measurement into the model}
 
@@ -513,11 +511,13 @@ Section~\ref{sec:environment}, are not easily controlled in practice.
 \begin{figure}
 \centering
 \includegraphics[width=0.45\textwidth]{figures/fig2/linear_scan_branchsum}
-\caption{A plot of many trials for a single benchmark, where each trial scans through
-increasing values of $n$. Note the smooth curve and asymptotic lower bound of the minima
-$(n^{(i)}, [\hat{t}_{\textrm{min}}]^{(i)}_n)$.}
+\caption{Each curve $i$ plots the coordinates $\left(1, \frac{T^{\{i\}}_1}{1}\right), \dots
+\left(500, \frac{T^{\{i\}}_{500}}{500}\right)$ gained by executing Algorithm 1 with the same
+benchmark. Note the relative smoothness and asymptotic behavior of the cross-curve minima.}
 \label{fig:scaling}
 \end{figure}
+
+\subsection{Tuning the experiment}
 
 Given $P_0$ (the initial benchmarkable program), $n$ (the number of executions of $P_0$ per
 timing measurement), and $\tau_{\textrm{budget}}$ (the user's time budget), an experiment
@@ -530,7 +530,7 @@ free to optimize is $n$. Recalling our model, increasing $n$ can cause $\frac{\e
 However, increasing $n$ also increases the time required to perform a single measurement,
 thus decreasing $m$, the number of measurements we can take within the time budget. We can
 strike a reasonable balance between maximizing measurement accuracy and maximizing $m$ by
-selecting the minimal value of $n$ that renders $\frac{\epsilon}{n} \ll t_{P_0}$. Our
+guessing a minimal value of $n$ that renders $\frac{\epsilon}{n} \ll t_{P_0}$. Our
 algorithm for guessing this value is as follows:
 
 \begin{algorithm}
@@ -551,28 +551,65 @@ for a given $P_0$ can be cached for use in subsequent experiments. Thus, we cons
 algorithm a pre-processing step that does not count against our time budget
 $\tau_{\textrm{acc}}$.
 
-% $E = \sum_{i} X_Q^{(i)} \tau^{(i)}$.
+\subsection{Justifying the minimum estimator}
 
-% Given the success probabilities $p^{(i)[j]}$ of the Bernoulli variables $x_Q^{(i)[j]}$,
-% there is a minimal observable value of $E$ that occurs with nonzero probability. This value,
-% which we'll denote $E_{\textrm{min}}$, may not necessarily correspond to $E = 0$, the value
-% attained in the theoretical best case where no delay factors trigger during program
-% execution. If at least one of the success probabilities is $1$, and the number of
-% instructions in $Q_0$ is $nk$, then $\sum_i X_Q^{(i)} \ge nk$ and thus $E = 0$ occurs with
-% zero probability.
-%
-% \begin{align}
-%     \hat{t}_{P_0} &= \textrm{min}(\frac{T_1}{1}, \dots \frac{T_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}}) \\ \nonumber
-%                   &= t_{P_0} + \textrm{min}(\frac{E_1}{1}, \dots \frac{E_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}}) + \textrm{min}(\frac{\epsilon_1}{1}, \dots \frac{\epsilon_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}}) \\ \nonumber
-%                   &= t_{P_0} + \hat{E}_{\textrm{min}} + \hat{\epsilon}_{\textrm{min}}
-% \end{align}
-%
-% where $-1 \le \hat{\epsilon}_{\textrm{min}} \le 1$, since
-% $\frac{-\tau_{\textrm{acc}}}{\tau_{\textrm{acc}}} \le
-% \frac{\epsilon_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}} \le
-% \frac{-\tau_{\textrm{acc}}}{\tau_{\textrm{acc}}}$.
-% Since the error is contrained to timer precision at $n = \tau_{\textrm{acc}}$, we do
-% not consider it necessary to attempt greater values of $n$.
+% OLD %%%%
+% Consider our delay factor term $E = \sum_{i} X_Q^{(i)} \tau^{(i)}$. Given the success
+% probabilities $p^{(i)[j]}$ of the Bernoulli variables $x_Q^{(i)[j]}$, there is a minimal
+% observable value of $E$ that occurs with nonzero probability. This value, which we'll denote
+% $E_{\textrm{min}}$, may not necessarily correspond to $E = 0$, the value attained in the
+% theoretical best case where no delay factors trigger during program execution. If at least
+% one of the success probabilities is $1$, and the number of instructions in $Q_0$ is $nk$,
+% then $\sum_i X_Q^{(i)} \ge nk$ and thus $E = 0$ occurs with zero probability.
+% OLD %%%%
+
+In our model, $\textrm{min}(\frac{T_1}{1}, \dots
+\frac{T_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}})$ is the best estimator for $t_{P_0}$
+because the minimum produces the closest estimate to $t_{P_0}$ attainable from our sample.
+Let us justify this claim.
+
+Consider the error term for a given timing measurement $E_m = \frac{\left(\sum_{i} X_Q^{(i)}
+\tau^{(i)} + \epsilon \right)_m}{n_m}$, such that $\frac{T_i}{n_i} = t_{P_0} + E_i$. Using
+this notation, our justification for using the minimum to estimate $t_{P_0}$ can be written:
+
+\begin{align}
+    \hat{t}_{P_0} &= \textrm{min}(\frac{T_1}{1}, \dots \frac{T_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}}) \\ \nonumber
+                  &= \textrm{min}(t_{P_0} + E_1, \dots t_{P_0} + E_{\textrm{acc}}) \\ \nonumber
+                  &= t_{P_0} + \textrm{min}(E_1, \dots E_{\textrm{acc}}) \\ \nonumber
+\end{align}
+
+The minimum thus inherently selects the estimate with the smallest error term.
+
+This interpretation of the minimum is supported by the behavior of the timing estimate curves
+plotted in Fig~\ref{fig:scaling}. These curves feature a relatively smooth lower
+bound, to which the minimum converges after the region where timer accuracy has a
+significant influence on the result. \TODO{say more about this figure?}
+
+Fig~\ref{fig:locationmeasures} provides further justification for the minimum over other
+common estimators like the median, mean, or trimmed mean. Recall from
+Section~\ref{sec:model} that the $E_i$ terms are sampled from a sum of scaled random
+variables following nonidentical Poisson binomial distributions. As such, these terms often
+exhibit multimodal behavior. While estimators like the median and trimmed mean are known to
+be robust to outliers \TODO{cite}, Fig~\ref{fig:locationmeasures} demonstrates that they
+still capture bimodality in the error term distributions. By contrast, we see that the
+distribution of the minimum across multiple experimental trials is unimodal, implying that
+the minimum is less effected by the bimodally-distributed error terms.
+
+\subsection{Justifying the $n$ range}
+
+It might not be obvious why our heuristic does not test $n > \tau_{\textrm{acc}}$. Recall
+that $-\tau_{\textrm{acc}} \le \epsilon \le \tau_{\textrm{acc}}$. For a given value of $n$,
+the timer error term in a timing estimate is $\frac{-\tau_{\textrm{acc}}}{n} \le
+\frac{\epsilon}{n} \le \frac{\tau_{\textrm{acc}}}{n}$. Thus, when $n = \tau_{\textrm{acc}}$:
+
+\begin{equation}
+\frac{-\tau_{\textrm{acc}}}{\tau_{\textrm{acc}}} \le \frac{\epsilon}{\tau_{\textrm{acc}}} \le \frac{\tau_{\textrm{acc}}}{\tau_{\textrm{acc}}} \to -1 \le \frac{\epsilon}{\tau_{\textrm{acc}}} \le 1
+\end{equation}
+
+In other words, we do not test $n > \tau_{\textrm{acc}}$ since the error at $n \ge
+\tau_{\textrm{acc}}$ is contrained to timer precision.
+
+\subsection{The oracle function}
 
 %     To obtain $n$, plug  into an oracle function $\nu(t_i) \to n_i$.
 %     Given $\tau_{\textrm{acc}}$ and $\tau_{\textrm{prec}}$, the properties of $\nu(t)$ are as follows:
