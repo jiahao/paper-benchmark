@@ -17,6 +17,10 @@
 \usepackage{verbatim}
 \usepackage{siunitx}
 \usepackage{listings}
+\usepackage{mathtools}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
 
 \lstdefinelanguage{Julia}{
   basicstyle=\small\ttfamily,
@@ -549,7 +553,7 @@ algorithm for guessing this value is as follows:
 This algorithm only ever needs to be applied once per benchmark, as the optimal value of $n$
 for a given $P_0$ can be cached for use in subsequent experiments. Thus, we consider this
 algorithm a pre-processing step that does not count against our time budget
-$\tau_{\textrm{acc}}$.
+$\tau_{\textrm{budget}}$.
 
 \subsection{Justifying the minimum estimator}
 
@@ -611,44 +615,78 @@ In other words, we do not test $n > \tau_{\textrm{acc}}$ since the error at $n \
 
 \subsection{The oracle function}
 
-%     To obtain $n$, plug  into an oracle function $\nu(t_i) \to n_i$.
-%     Given $\tau_{\textrm{acc}}$ and $\tau_{\textrm{prec}}$, the properties of $\nu(t)$ are as follows:
-%     \begin{itemize}
-%         \item $\nu(\tau_{\textrm{prec}}) \approx \tau_{\textrm{acc}}$
-%         \item $\nu(\tau_{\textrm{acc}}) \approx \text{small } (\sim 10)$
-%         \item $\nu(t \gg \tau_{\textrm{acc}}) \approx 1$
-%         \item $\frac{d\nu}{dt}\big|_{t \approx \tau_{\textrm{prec}}} = \text{close to zero}$
-%         \item free of discontinuities \TODO{how to say this correctly since the range is
-%         discretized}
-%     \end{itemize}
-% \end{enumerate}
+\begin{figure}
+\centering
+\includegraphics[width=0.45\textwidth]{figures/fig5/oracle}
+\caption{Two possible curves for $\nu(t)$ at $\tau_{\textrm{acc}} \approx 1000 \textrm{ns}$.
+The solid blue curve is an example of an empirically-tuned lookup table, while the dotted
+black curve is $Y(t)$ from Eq~\ref{eq:14} with paramters $a = 0.009$ and $b = 0.5$.}
+\label{fig:scaling}
+\end{figure}
+
+Our heuristic takes as input an oracle function $\nu(t)$ that maps expected runtimes to an
+optimal number of executions per measurement. While Algorithm 1 does not directly describe
+$\nu(t)$, appropriate choices for this function should have the following properties:
+
+\begin{itemize}
+    \item $\nu(t)$ has a discrete range $n \in \{1, \dots \tau_{\textrm{acc}}\}$
+    \item $\nu(t)$ is monotonically decreasing
+    \item $\frac{d\nu}{dt}|_{t \approx 1} \approx 0$
+    \item $\frac{d\nu}{dt}|_{t \approx \tau_{\textrm{acc}}} \approx 0$
+    \item $\nu(1) \approx \tau_{\textrm{acc}}$
+    \item $\nu(t \ge \tau_{\textrm{acc}}) \approx 1$
+\end{itemize}
+
+Some of these properties are motivated by reasonable assumptions that we haven't explicitly
+stated, but are easily derived from our model. First, $\nu(t)$ should be monotonically
+decreasing because benchmarks with larger runtimes will require smaller $n$, and vice versa.
+Second, $\nu(t)$ should be relatively flat for small $t$ because variations in the error
+term between timing estimates can be large compared to the actual runtime of fast
+benchmarks.
+
+A useful realization of $\nu(t)$ is a special version of the generalized logistic function
+that can be tuned to achieve the above properties. For our purposes, we can express this
+function as
+
+\begin{equation}
+    Y(t) = \floor*{1 + \frac{\tau_{\textrm{acc}} - 1}{1 + e^{a * (t - b*\tau_{\textrm{acc}})}}}
+\end{equation}
+
+where reasonable values of $a$ and $b$ are approximately $0.005 < a < 0.02$ and $0.4 < b <
+0.6$. In practice, we have found that more optimal results can be achieved by first
+approximating $Y(t)$ with a lookup table, then modifying the lookup table based on empirical
+observations. This can be done by examining many benchmarks with a variety of known runtimes
+at different time scales, seeking for each runtime the smallest $n$ value at which the
+minimum estimate appears to converge to a lower bound (e.g. around $n = 250$ for the
+benchmark in Fig~\ref{fig:scaling}). Fig~\ref{fig:oracle} plots both Eq~\ref{eq:14} and an
+empirically obtained lookup table as potential oracle functions.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:hypotesting}
 \section{Hypothesis tests for regression detection}
 
-\begin{figure}
-\centering
-\includegraphics[width=\columnwidth]{figures/fig3/location_estimators_sumindex}
-\caption{The behavior of different location parameters across multiple trials of
-the \lstinline|sumindex| benchmark: mean (green filled circles), trimmed mean of
-the 5th---95th percentiles (brown filled squares), medisn (black crosses), and
-minimum (blue filled triangles).}
-\label{fig:locationmeasures}
-\end{figure}
+% \begin{figure}
+% \centering
+% \includegraphics[width=\columnwidth]{figures/fig3/location_estimators_sumindex}
+% \caption{The behavior of different location parameters across multiple trials of
+% the \lstinline|sumindex| benchmark: mean (green filled circles), trimmed mean of
+% the 5th---95th percentiles (brown filled squares), medisn (black crosses), and
+% minimum (blue filled triangles).}
+% \label{fig:locationmeasures}
+% \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:limits}
 \section{Limitations of our methodology}
 
-\begin{figure}[!t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig4/kde_pdf_sumindex}
-\caption{Probability density functions (pdfs) from repeated trials of the
-\lstinline|sumindex| benchmark. The pdfs form two distinct clusters, indicating
-correlation across multiple trials.}
-\label{fig:pdfsumindex}
-\end{figure}
+% \begin{figure}[!t]
+% \centering
+% \includegraphics[width=\columnwidth]{figures/fig4/kde_pdf_sumindex}
+% \caption{Probability density functions (pdfs) from repeated trials of the
+% \lstinline|sumindex| benchmark. The pdfs form two distinct clusters, indicating
+% correlation across multiple trials.}
+% \label{fig:pdfsumindex}
+% \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:julia}

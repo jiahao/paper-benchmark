@@ -212,3 +212,18 @@ function splitmean(trials, μ; kwargs...)
 end
 
 const left_sumindex, right_sumindex = splitmean(map(t -> t.times, group[:sumindex]), 190, rcut = 0.10, lcut = 0.05)
+
+# oracle function plot #
+#----------------------#
+
+logistic(u, l, k, t, t0) = floor(Int, ((u - l) / (1 + exp(-k * (t - t0)))) + l)
+
+function plot_oracle()
+    plot(BenchmarkTools.EVALS)
+    plot([logistic(1000, 1, -0.009, t, 500) for t in 1:1000], linestyle="dashed", color="black")
+    plt[:locator_params](nbins=3)
+    plt[:xlim]((1, 1000))
+    plt[:xlabel]("time (ns)", fontsize = 35)
+    plt[:ylabel]("executions per measurement", fontsize = 35)
+    plt[:tick_params](axis="both", labelsize = 35)
+end
