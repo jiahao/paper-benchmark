@@ -24,9 +24,11 @@ function alltrials(group, id)
     return group[id_fast], group[id], group[id_slow]
 end
 
-##########
-# pvalue #
-##########
+#############################
+# significance calculations #
+#############################
+
+reject(p, threshold) = p <= threshold
 
 function pvalue(estsamps, nullval, testval)
     flipval = 2testval - nullval # nullval flipped around testval
@@ -35,42 +37,11 @@ function pvalue(estsamps, nullval, testval)
     return 1 - mean(leftbound .< estsamps .< rightbound)
 end
 
-################################
-# hardcoded hypothesis testing #
-################################
-
-function sametest(a::BenchmarkTools.Trial, b::BenchmarkTools.Trial; kwargs...)
-    return sametest(a.times, b.times; kwargs...)
-end
-
-function sametest{T}(a::T, b::T; kwargs...)
-    estsamps = bootstrap(a, b; kwargs...)
-    return pvalue(estsamps, 1.0, minimum(a) / minimum(b))
-end
-
-function bootstrap(a::BenchmarkTools.Trial, b::BenchmarkTools.Trial; kwargs...)
-    return bootstrap(a.times, b.times; kwargs...)
-end
-
-function bootstrap(a, b; resamps = 5, trials = 100)
-    estsamps = zeros(trials)
-    for i in 1:trials
-        x = Inf
-        y = Inf
-        for _ in 1:resamps
-            x = min(rand(a), x)
-            y = min(rand(b), y)
-        end
-        estsamps[i] = x / y
-    end
-    return estsamps
-end
-
 # For a given benchmark trial, estimate the minimum percent shift in the trial's location
 # necessary to achieve a rejection with a given threshold and bootstrap parameters.
-rejectchange(trial::BenchmarkTools.Trial; kwargs...) = rejectchange(trial.times; kwargs...)
+reject_effect(trial::BenchmarkTools.Trial; kwargs...) = reject_effect(trial.times; kwargs...)
 
-function rejectchange(trial; threshold = 0.01, kwargs...)
+function reject_effect(trial; threshold = 0.01, kwargs...)
     percent_unit = 0.001
     shift_unit = ceil(Int, minimum(trial) * percent_unit)
     total_percent = percent_unit
@@ -79,7 +50,7 @@ function rejectchange(trial; threshold = 0.01, kwargs...)
         for i in eachindex(trial_shifted)
             trial_shifted[i] += shift_unit
         end
-        if sametest(trial, trial_shifted; kwargs...) < threshold
+        if bootstrap_pvalue(trial, trial_shifted; kwargs...) < threshold
             return total_percent
         else
             total_percent += percent_unit
@@ -88,44 +59,72 @@ function rejectchange(trial; threshold = 0.01, kwargs...)
     return total_percent
 end
 
-function randpairs(iters, populations; threshold = 0.01, verbose = true, kwargs...)
-    k = length(populations)
-    false_positives = Any[]
-    false_negatives = Any[]
-    total = 0
-    for _ in 1:iters
-        i, j = rand(1:k), rand(1:k)
-        m, n = rand(1:length(populations[i])), rand(1:length(populations[j]))
-        p = sametest(populations[i][m], populations[j][n]; kwargs...)
-        reject = p < threshold
-        if reject == (i == j)
-            str = "[$i][$m] vs. [$j][$n]: $p"
-            verbose && print(str)
-            if reject
-                verbose && println(" | FALSE POSITIVE")
-                push!(false_positives, str)
-            else
-                verbose && println(" | FALSE NEGATIVE")
-                push!(false_negatives, str)
-            end
-        end
-        total += 1
+# inverse of reject_effect; returns the appropriate threshold to reject at a given effect size
+reject_threshold(trial::BenchmarkTools.Trial; kwargs...) = reject_threshold(trial.times; kwargs...)
+
+function reject_threshold(trial; effect = 0.05, kwargs...)
+    shift_unit = ceil(Int, minimum(trial) * effect)
+    trial_shifted = copy(trial)
+    for i in eachindex(trial_shifted)
+        trial_shifted[i] += shift_unit
     end
-    return total, false_positives, false_negatives
+    return bootstrap_pvalue(trial, trial_shifted; kwargs...)
 end
 
-function allpairs(populations; threshold = 0.01, verbose = true, kwargs...)
+################################
+# bootstrap hypothesis testing #
+################################
+
+function bootstrap(a::BenchmarkTools.Trial, b::BenchmarkTools.Trial; kwargs...)
+    return bootstrap(a.times, b.times; kwargs...)
+end
+
+function bootstrap(a, b; effect = 0.05, threshold = 0.01, auto = :threshold, kwargs...)
+    p = bootstrap_pvalue(a, b; kwargs...)
+    if auto == :threshold
+        threshold_value = reject_threshold(a; effect = effect, kwargs...)
+        effect_value = effect
+    elseif auto == :effect
+        threshold_value = threshold
+        effect_value = reject_effect(a; threshold = threshold, kwargs...)
+    else
+        error("bad value for keyword argument auto: $auto")
+    end
+    return p, threshold_value, effect_value
+end
+
+function bootstrap_pvalue{T}(a::T, b::T; kwargs...)
+    estsamps = bootstrap_dist(a, b; kwargs...)
+    return pvalue(estsamps, 1.0, minimum(a) / minimum(b))
+end
+
+# m-out-of-n bootstrap with replacement
+function bootstrap_dist(a, b; resample = 0.01, trials = min(1000, length(a), length(b)))
+    estsamps = zeros(trials)
+    a_resample = zeros(ceil(Int, resample*length(a)))
+    b_resample = zeros(ceil(Int, resample*length(b)))
+    for i in 1:trials
+        estsamps[i] = minimum(rand!(a_resample, a)) / minimum(rand!(b_resample, b))
+    end
+    return estsamps
+end
+
+##################################
+# aggregate testing on real data #
+##################################
+
+function allpairs(populations; verbose = true, kwargs...)
     false_positives = Any[]
     false_negatives = Any[]
     total = 0
     for i in 1:length(populations), j in 1:length(populations)
         for m in 1:length(populations[i]), n in 1:length(populations[j])
-            p = sametest(populations[i][m], populations[j][n]; kwargs...)
-            reject = p < threshold
-            if reject == (i == j)
-                str = "[$i][$m] vs. [$j][$n]: $p"
+            p, threshold, effect = bootstrap(populations[i][m], populations[j][n]; kwargs...)
+            rejectbool = reject(p, threshold)
+            if rejectbool == (i == j)
+                str = "[$i][$m] vs. [$j][$n]: $p | THRESHOLD: $threshold | EFFECT: $effect"
                 verbose && print(str)
-                if reject
+                if rejectbool
                     verbose && println(" | FALSE POSITIVE")
                     push!(false_positives, str)
                 else
@@ -139,29 +138,18 @@ function allpairs(populations; threshold = 0.01, verbose = true, kwargs...)
     return total, false_positives, false_negatives
 end
 
-function basepairs(x, y; threshold = 0.01, verbose = true, kwargs...)
+function basepairs(x, y; verbose = true, kwargs...)
     total = 0
     # there are no oppportunities for false negatives in our BaseBenchmarks dataset
     false_positives = Any[]
     for (k, v) in BenchmarkTools.leaves(x)
-        if isa(x[k], BenchmarkTools.Trial)
-            # only test trials with at least 10000 timings
-            if length(v) >= 10000
-                p = sametest(v, y[k]; kwargs...)
-                if p < threshold
-                    str = "$(k): $(p)"
-                    verbose && println(str)
-                    push!(false_positives, str)
-                end
-                total += 1
-            end
-        else # there's some bug in BenchmarkTools.leaves, this works around it
-            t, childkeys = basepairs(x[k], y[k]; threshold = threshold, kwargs...)
-            total += t
-            for c in childkeys
-                push!(false_positives, append!(k, childkeys))
-            end
+        p, threshold, effect = bootstrap(v, y[k]; kwargs...)
+        if reject(p, threshold)
+            str = "$(k): $p | THRESHOLD: $threshold | EFFECT: $effect"
+            verbose && println(str)
+            push!(false_positives, str)
         end
+        total += 1
     end
     return total, false_positives
 end
