@@ -32,8 +32,9 @@ function pushall_slow!(collection, items)
 end
 
 # recursion, uneven branching, no allocation
-# Note: The fact that these branchsum functions perform drastically differently is somewhat
-# distressing, and probably points to an actual Julia performance bug.
+# Note: The fact that these branchsum functions perform drastically
+# differently probably points to an actual Julia performance bug.
+# Note 2: The performance bug seems to have been fixed in Julia v0.5.
 function branchsum(n)
     x = 1
     for i in 1:n
