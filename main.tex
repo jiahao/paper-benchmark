@@ -171,6 +171,7 @@ that the mean has non-i.i.d., nonnormal behavior in four different benchmarks.
 Each point represents a mean time computed from trial of 10,000 measurements.
 The horizontal axis is the index of the trial, while the vertical axis is time.}
 \label{fig:meandistributions}
+\vspace{-0.42cm} % hack to get rid of weirdly large line gap below this figure
 \end{figure}
 
 The myriad sources of performance variation discussed in the previous section pose a
@@ -491,8 +492,6 @@ strike a reasonable balance between maximizing measurement accuracy and maximizi
 guessing a minimal value of $n$ that renders $\frac{\epsilon}{n} \ll t_{P_0}$. Our
 automatable procedure for guessing this value is given in Algorithm~\ref{alg:tuning}:
 
-\newpage % necessary since forcing inlining via H doesn't work for algorithms in two-column mode
-
 \begin{algorithm}
     \caption{estimating the optimal $n$ value}
     \label{alg:tuning}
@@ -515,7 +514,7 @@ $\tau_{\textrm{budget}}$.
 \label{sec:minimum}
 \subsection{Justifying the minimum estimator}
 
-\begin{figure}[H]
+\begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{figures/fig2/linear_scan_branchsum}
 \caption{Each curve $i$ plots the coordinates
@@ -542,7 +541,7 @@ be written:
                   &= t_{P_0} + \textrm{min}(E_1, \dots E_{\textrm{acc}}) \\ \nonumber
 \end{align}
 
-\begin{figure}[H]
+\begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{figures/fig3/location_estimators_sumindex}
 \caption{The behavior of different location parameters across multiple trials of
