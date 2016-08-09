@@ -65,8 +65,6 @@ Email: \{jiahao,jrevels\}@csail.mit.edu}
 
 \TODO{come up with better section/subsection names}
 \TODO{come up with the final title}
-\TODO{do we need a conclusion?}
-\TODO{should the notation section be an appendix instead of a section in the middle of the paper?}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
@@ -201,7 +199,7 @@ compilers providing reproducible~\cite{Georges2008} or consistently
 randomized~\cite{Curtsinger2013} binary layouts, to low-variability garbage
 collectors~\cite{Huang2004}. Unfortunately, the implementation and applicability of these
 methods are often specific to a single programming language, compiler, and/or platform.
-Furethermore, these methods often require drastic modifications to a typical user's
+Furthermore, these methods often require drastic modifications to a typical user's
 workspace, which cannot be reasonably automated without root access to a user's machine.
 
 \subsection{Existing benchmarking methodologies}
@@ -653,7 +651,7 @@ A logical next step would be to use our model to compare the timing estimates of
 programs - or equivalently, two different versions of the same program - and provide to the
 reader an algorithm for calculating some measure of the statistical significance of the
 comparison, such as a confidence interval. Unfortunately, as mentioned in
-Section~\ref{sec:toughstats}, the majority of statistical tests are inapplicable to our
+Section~\ref{sec:toughstats}, many common statistical tests are inapplicable to our
 model due to the non-i.i.d. (potentially even non-stationary) nature of benchmark timing
 measurements.
 
@@ -716,17 +714,18 @@ regression detection.
 
 The experimental methodology in this paper is implemented in the BenchmarkTools Julia
 package \footnote{\url{https://github.com/JuliaCI/BenchmarkTools.jl}}. In addition to the
-BaseBenchmarks \footnote{\url{https://github.com/JuliaCI/BaseBenchmarks.jl}} and Nanosoldier
-\footnote{\url{https://github.com/JuliaCI/Nanosoldier.jl}} packages, the BenchmarkTools
-package implements the on-demand CI benchmarking service used by core Julia developers to
-compare the performance of proposed language changes with respect to over 1300 benchmarks.
-Since this CI benchmarking service began in early 2016, it has caught and prevented the
-introduction of dozens of serious performance regressions into Julia's standard library
-(defining a ``serious'' regression as a $30\%$ or greater increase in a benchmark's
-minimum execution time).
+\lstinline|BaseBenchmarks| \footnote{\url{https://github.com/JuliaCI/BaseBenchmarks.jl}} and
+\lstinline|Nanosoldier| \footnote{\url{https://github.com/JuliaCI/Nanosoldier.jl}} packages,
+the \lstinline|BenchmarkTools| package implements the on-demand CI benchmarking service used
+by core Julia developers to compare the performance of proposed language changes with
+respect to over 1300 benchmarks. Since this CI benchmarking service began in early 2016, it
+has caught and prevented the introduction of dozens of serious performance regressions into
+Julia's standard library (defining a ``serious'' regression as a $30\%$ or greater increase
+in a benchmark's minimum execution time).
 
 The benchmarks referenced in this paper are Julia benchmarks written and executed using
-BenchmarkTools. A brief description of each benchmark is offered below:
+\lstinline|BenchmarkTools\lstinline|. A brief description of each benchmark is offered
+below:
 
 \begin{itemize}
     \item The \lstinline|sumindex(a, inds)| benchmark sums over all \lstinline|a[i]| for all
@@ -750,8 +749,49 @@ BenchmarkTools. A brief description of each benchmark is offered below:
     the frequent allocation of arrays of differing length.
 \end{itemize}
 
-The mock benchmark suite and experimental results referenced in this paper is hosted on
-GitHub at \url{https://github.com/jiahao/paper-benchmark}.
+The mock benchmark suite referenced in this paper is hosted on GitHub at
+\url{https://github.com/jiahao/paper-benchmark}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\label{sec:conclusion}
+\section*{Conclusion}
+
+In this article, we discussed how the complexities of modern hardware and software
+environments can hinder the application of traditional statistics to performance testing. We
+reviewed the statistical barriers that past research has uncovered, confirming these
+results by presenting the non-ideal behavior exhibited by our own timing measurements. We
+examine a few existing benchmarking methodologies, some of which improperly assume i.i.d.
+and unimodal statistics. We discuss a benchmarking methodology that does rigorously consider
+the non-i.i.d. statistics of program timing distributions \cite{Kalibera2013}, but find that
+their method requires an overbearing amount of manual tuning for large and frequently
+revised benchmark suites, such as the Julia language's standard library benchmark suite.
+
+To aid in the design of future performance testing approaches, we presented a statistical
+model for describing timing measurement distributions. Our model does not assume i.i.d.
+statistics, and exhibits convergence properties which challenge the common rule of thumb
+that simply running a benchmark for longer, or repeating its execution many times, can
+render the effects of external variation negligible. Our model also shows that, unlike
+arbitrary sources of variation, error due to timer inaccuracy can, in fact, be amortized
+simply by running a benchmark long enough or executing it many times.
+
+Leveraging the properties of our model, we devised an automatable, data-dependent heuristic
+for selecting the minimum number of executions of a benchmark per measurement required to
+defeat timer error. This heuristic is implemented by the \lstinline|BenchmarkTools| Julia
+package, which is employed daily and on-demand as part Julia's continuous integration (CI)
+pipeline to automatically evaluate the performance effects of proposed changes to Julia's
+standard library, as well as to test the performance of user-authored Julia packages.
+
+We additionally discussed the use of hypothesis testing for determining the statisical
+significance of performance regressions. We argue that many parametric and nonparametric
+hypothesis tests are unsuitable for this task, because their correctness has not been proven
+in a non-i.i.d. regime. We propose that performance testing research would benefit from
+further investigation of non-i.i.d., data-dependent hypothesis testing techniques such as
+the block subsampling method.
+
+Throughout the paper, we present real timing measurements taken from Julia benchmarks which
+demonstrate the multi-modal behavior predicted by our model and motivate the design of our
+experimental methodology. Section~\ref{sec:implementation} describes our experimental mock
+benchmark suite in detail, and provides a link to the suite's implementation.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \label{sec:acknowledgement}
