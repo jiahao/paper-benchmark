@@ -100,7 +100,7 @@ and may lead to misguided decisions that worsen performance.
 
 In this paper, we consider the problem of designing a language- and platform-agnostic
 benchmarking methodology that is suitable for continuous integration (CI) pipelines and
-manual user workflows. Our methodology especially focuses on the accomodation of benchmarks
+manual user workflows. Our methodology especially focuses on the accommodation of benchmarks
 whose expected executions times are short enough that timing measurements are vulnerable to
 error due to insufficient system timer accuracy (generally on the order of microseconds
 or less).
@@ -116,7 +116,7 @@ network traffic, and operating system (OS) configuration. For the sake of stabil
 improve program performance, a significant portion of performance testing research is
 focused on identifying and isolating (or eliminating) sources of variation.
 
-Over the past decade and a half, system quiesence research has uncovered a large number of
+Over the past decade and a half, system quiescence research has uncovered a large number of
 these sources stemming from OS behaviors, including CPU frequency scaling \cite{RHEL6},
 address space layout randomization (ASLR)~\cite{Shacham2004}, virtual memory
 management~\cite{Oyama2014,Oyama2016}, differences between CPU privilege
@@ -126,9 +126,9 @@ process- and thread-level scheduling~\cite{Lozi2016}. Even seemingly irrelevant
 configuration parameters like the size of the OS environment can confound experimental
 reproducibility by altering the alignment of data in memory~\cite{Mytkowicz2009}.
 
-System quiesence research has also identified language-specific sources of performance
+System quiescence research has also identified language-specific sources of performance
 variation. For example, some languages feature linkers which are free to choose the binary
-layout of the library or executable arbitrarily, resulting in nondeterministic memory
+layout of the library or executable arbitrarily, resulting in non-deterministic memory
 layouts~\cite{Georges2008}. This problem is exacerbated in languages like C++, whose
 compilers introduce random name mangling of symbols~\cite{Kalibera2005}. Another class of
 performance variations are due to unexpected compiler optimizations, which adversely affect
@@ -138,7 +138,7 @@ which can exhibit varying behavior based on external parameters such as heap
 size~\cite{Blackburn2004}.
 
 \label{sec:toughstats}
-\subsection{Doing stastistics on timing measurements is hard}
+\subsection{Doing statistics on timing measurements is hard}
 
 \begin{figure}
 \centering
@@ -165,7 +165,7 @@ size~\cite{Blackburn2004}.
     \caption{Benchmark 4: Bimodal with drift}
 \end{subfigure}
 \caption{Variability in the mean benchmark time across multiple trials, showing
-that the mean has non-i.i.d., nonnormal behavior in four different benchmarks.
+that the mean has non-i.i.d., non-normal behavior in four different benchmarks.
 Each point represents a mean time computed from trial of 10,000 measurements.
 The horizontal axis is the index of the trial, while the vertical axis is time.}
 \label{fig:meandistributions}
@@ -213,7 +213,7 @@ attempts to thwart error due to timer inaccuracy by growing the number of benchm
 executions per timing measurement as more timing measurements are obtained. After all
 measurements are taken, a summary estimate of the benchmark runtime is obtained by examining
 the derivative of the ordinary least squares regression line at a single evaluation. The
-disadvatanges of this strategy are twofold. First, the least squares fit employed by
+disadvantages of this strategy are twofold. First, the least squares fit employed by
 \lstinline|criterion| is sensitive to outliers (though \lstinline|criterion| does print a
 warning to the user if outliers are detected)~\cite{Maronna2006}. Second, this measurement
 strategy is inefficient with respect to experiment time, since much of the experiment time
@@ -221,17 +221,17 @@ is spent collecting measurements using more benchmark repetitions than is necess
 overcome timer inaccuracy, or worse, using too few benchmark repetitions to overcome timer
 inaccuracy.
 
-One of the more promising methodologies is presented by Kalibera et. al. in the paper
+One of the more promising methodologies is presented by Kalibera et al. in the paper
 ``Rigorous Benchmarking in Reasonable Time''~\cite{Kalibera2013}. Their approach is largely
 platform-agnostic, recognizes the pitfalls of inter-measurement correlations, and
 acknowledges that merely increasing the number of benchmark repetitions is not always a
-sufficient strategy to yield i.i.d. samples. However, the downside of Kalibera et. al.'s
+sufficient strategy to yield i.i.d. samples. However, the downside of Kalibera et al.'s
 methodology is that it requires the upfront execution of a manual experiment for every
 benchmark, compiler, and platform combination. The initial cost of a manual experiment is a
 low barrier to overcome if one is simply seeking benchmark results for research purposes,
 but can render the methodology inaccessible for normal user workflows and CI pipelines,
 where benchmark suites are large and change often. For example, the Julia language's
-standard libary benchmark suite contains over 1300 benchmarks, and is frequently expanded
+standard library benchmark suite contains over 1300 benchmarks, and is frequently expanded
 to improve performance test coverage. For cases like these, it is vital that even
 pre-experiment parameter tuning be automatable.
 
@@ -291,7 +291,7 @@ measured quantities related to benchmarking. We define this notation here:
     superscripts, $\cdot^{(i)}$.
 
     \item
-    $\epsilon$ is the measurment error due to timer inaccuracy.
+    $\epsilon$ is the measurement error due to timer inaccuracy.
 
     \item
     $E_m$ is $\frac{T_m}{n_m} - t_{P_0}$ for a measurement $m$. In other words, $E_m$ is the
@@ -338,7 +338,7 @@ respect to the scope of $P_0$'s original definition and execution.
 
 In reality, the machine and operating system executing $P_0$ are vulnerable to the factors
 described in Section~\ref{sec:variations}. These factors may cause the computer to undergo
-zero or more intermediary state transitions before achieving the state transistion specified
+zero or more intermediary state transitions before achieving the state transition specified
 by instruction $I^{[i]}$. Since these factors \textit{delay} the completion of the original
 instructions, we refer to them as \textit{delay factors}\footnote{Technically, there are
 some causes of timing variations which might speed up the execution of a program, such as
@@ -466,7 +466,7 @@ the measurement:
 
 Eq~\ref{eq:11} is a key result of our model: \textbf{One cannot reliably eliminate the
 effects of external variations simply by executing the benchmark a large number of times.}
-Whether or not increasing $n$ can render the delay factor term neglible depends entirely on
+Whether or not increasing $n$ can render the delay factor term negligible depends entirely on
 the random variables $X_Q^{(i)}$, which, recalling our discussion in
 Section~\ref{sec:variations}, are not easily controlled in practice.
 
@@ -594,7 +594,7 @@ the timer error term in a timing estimate is $\frac{-\tau_{\textrm{acc}}}{n} \le
 \end{equation}
 
 In other words, we do not test $n > \tau_{\textrm{acc}}$ since the error at $n \ge
-\tau_{\textrm{acc}}$ is contrained to timer precision.
+\tau_{\textrm{acc}}$ is constrained to timer precision.
 
 \subsection{The oracle function}
 
@@ -661,11 +661,11 @@ technically constitutes a parameterized distribution, there are an overwhelming 
 parameters to take into account. While it is possible that some benchmarks' timing
 distributions are feasibly derivable given extremely precise knowledge of the target program
 and execution environment, it is safe to say that, in practice, the excessive number of
-uncontrolled variables will generally render parameteric hypothesis testing untenable.
+uncontrolled variables will generally render parametric hypothesis testing untenable.
 
 Often, nonparametric tests are used when it is infeasible to analytically derive the
 properties required by parametric tests. Consider the naive bootstrap, a popular
-resampling-based nonparameteric method for hypothesis testing. In this method, new samples
+resampling-based nonparametric method for hypothesis testing. In this method, new samples
 are randomly drawn from the original sample, in effect treating the original sample as an
 estimate of the original population so that an estimate for the distribution of a test
 statistic can be formed without prior knowledge of the original population's
@@ -677,7 +677,7 @@ methods which are designed to work for correlated data.
 
 One of these variants is known as permutation testing, which can yield exact confidence
 intervals as long as the two samples being compared were drawn from populations following
-exchangeable distriubtions under the null hypothesis~\cite{Good2013}. The downside of
+exchangeable distributions under the null hypothesis~\cite{Good2013}. The downside of
 permutation testing is that it can be immensely computationally expensive for large sample
 sizes, as it requires the test statistic to be calculated for many (if not all) permutations
 of the two original samples.
@@ -695,7 +695,7 @@ feature a low tolerance for suboptimal choices of configuration parameters. For 
 these methods can fail to produce a uniform p-value distributions if the size of the
 resampled block is not chosen properly~\cite{Shao2013}. Additionally, in order to prevent
 degeneracy in the estimated distribution, one must apply a normalization coefficient to the
-test stastitic~\cite{Politis1999}. This coefficient is derived from the rate of convergence
+test statistic~\cite{Politis1999}. This coefficient is derived from the rate of convergence
 of the statistic's variance with increasing sample size, which can depend on the original
 population's underlying distribution.
 
@@ -781,7 +781,7 @@ package, which is employed daily and on-demand as part Julia's continuous integr
 pipeline to automatically evaluate the performance effects of proposed changes to Julia's
 standard library, as well as to test the performance of user-authored Julia packages.
 
-We additionally discussed the use of hypothesis testing for determining the statisical
+We additionally discussed the use of hypothesis testing for determining the statistical
 significance of performance regressions. We argue that many parametric and nonparametric
 hypothesis tests are unsuitable for this task, because their correctness has not been proven
 in a non-i.i.d. regime. We propose that performance testing research would benefit from
@@ -789,7 +789,7 @@ further investigation of non-i.i.d., data-dependent hypothesis testing technique
 the block subsampling method.
 
 Throughout the paper, we present real timing measurements taken from Julia benchmarks which
-demonstrate the multi-modal behavior predicted by our model and motivate the design of our
+demonstrate the multimodal behavior predicted by our model and motivate the design of our
 experimental methodology. Section~\ref{sec:implementation} describes our experimental mock
 benchmark suite in detail, and provides a link to the suite's implementation.
 
