@@ -780,13 +780,12 @@ The mock benchmark suite referenced in this paper is hosted on GitHub at
 
 In this article, we discussed how the complexities of modern hardware and software
 environments can hinder the application of traditional statistics to performance testing. We
-reviewed the statistical barriers that past research has uncovered, confirming these
-results by presenting the non-ideal behavior exhibited by our own timing measurements. We
-examine a few existing benchmarking methodologies, some of which improperly assume i.i.d.
-and unimodal statistics. We discuss a benchmarking methodology that does rigorously consider
-the non-i.i.d. statistics of program timing distributions \cite{Kalibera2013}, but find that
-their method requires an overbearing amount of manual tuning for large and frequently
-revised benchmark suites, such as the Julia language's standard library benchmark suite.
+presented Julia benchmark runtime measurements exhibiting non-i.i.d behavior, violating
+statistical assumptions made by many existing benchmarking methodologies. We discuss a
+benchmarking methodology that does rigorously consider the non-i.i.d. statistics of program
+timing distributions \cite{Kalibera2013}, but find that their method requires an overbearing
+amount of manual tuning for large and frequently revised benchmark suites, such as the Julia
+language's standard library benchmark suite.
 
 To aid in the design of future performance testing approaches, we presented a statistical
 model for describing timing measurement distributions. Our model does not assume i.i.d.
