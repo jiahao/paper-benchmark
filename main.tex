@@ -89,8 +89,8 @@ of the Julia language and ecosystem.
 \IEEEpeerreviewmaketitle
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\label{sec:intro}
 \section{Introduction}
+\label{sec:intro}
 
 Developers of high performance applications often rely on benchmark suites to determine the
 impact of code changes on program performance. Despite the importance of these suites in
@@ -105,8 +105,8 @@ whose expected executions times are short enough that timing measurements are vu
 error due to insufficient system timer accuracy (generally on the order of microseconds
 or less).
 
-\label{sec:variations}
 \subsection{Accounting for performance variations}
+\label{sec:variations}
 
 Modern hardware and operating systems introduce many confounding factors that complicate a
 developer's ability to reason about variations in user-space application
@@ -137,8 +137,8 @@ parts of the benchmark as dead code. Yet another example is garbage collector pe
 which can exhibit varying behavior based on external parameters such as heap
 size~\cite{Blackburn2004}.
 
-\label{sec:toughstats}
 \subsection{Doing statistics on timing measurements is hard}
+\label{sec:toughstats}
 
 \begin{figure}
 \centering
@@ -175,9 +175,8 @@ The horizontal axis is the index of the trial, while the vertical axis is time.}
 The myriad sources of performance variation discussed in the previous section pose a
 significant problem when applying textbook statistical approaches to benchmark timing
 measurements. Central to this problem is the violation of a commonly relied-upon assumption
-that samples are \textit{independent and identically distributed} (i.i.d.), and the related
-assumption that the sample mean will converge to a normal distribution as the sample size
-increases.
+that the sample mean will converge to a normal distribution as the sample size increases,
+as would be the case if timing samples were independent and identically distributed (i.i.d.).
 
 In reality, we have observed non-i.i.d. behavior in many Julia benchmarks. For example,
 Figure~\ref{fig:meandistributions} shows that none of the four illustrative benchmarks
@@ -203,6 +202,7 @@ Furthermore, these methods often require drastic modifications to a typical user
 workspace, which cannot be reasonably automated without root access to a user's machine.
 
 \subsection{Existing benchmarking methodologies}
+\label{sec:existingtools}
 
 While it is impossible to eliminate performance variation
 entirely~\cite{Alcocer2015,Barrett2016}, benchmarking methodologies that attempt to account
@@ -212,14 +212,15 @@ For example, the Haskell microbenchmarking packages \lstinline|criterion|~\cite{
 attempts to thwart error due to timer inaccuracy by growing the number of benchmark
 executions per timing measurement as more timing measurements are obtained. After all
 measurements are taken, a summary estimate of the benchmark runtime is obtained by examining
-the derivative of the ordinary least squares regression line at a single evaluation. The
-disadvantages of this strategy are twofold. First, the least squares fit employed by
-\lstinline|criterion| is sensitive to outliers (though \lstinline|criterion| does print a
-warning to the user if outliers are detected)~\cite{Maronna2006}. Second, this measurement
-strategy is inefficient with respect to experiment time, since much of the experiment time
-is spent collecting measurements using more benchmark repetitions than is necessary to
-overcome timer inaccuracy, or worse, using too few benchmark repetitions to overcome timer
-inaccuracy.
+the derivative of the ordinary least squares regression line at the point of a single
+evaluation point. The disadvantages of this strategy are threefold. First, the least squares
+fit employed by \lstinline|criterion| is sensitive to outliers (though \lstinline|criterion|
+does print a warning to the user if outliers are detected)~\cite{Maronna2006}. Second,
+measurements made earlier in this experiment are highly vulnerable to timer error, since few
+benchmark repetitions are used. These early measurements can skew the regressions line, and
+in turn, the final runtime estimate. Third, measurements made later in the experiment can
+repeat the benchmark more times than is necessary to overcome timer error, constituting an
+inefficient use of experimenter time.
 
 One of the more promising methodologies is presented by Kalibera et al. in the paper
 ``Rigorous Benchmarking in Reasonable Time''~\cite{Kalibera2013}. Their approach is largely
@@ -236,8 +237,8 @@ to improve performance test coverage. For cases like these, it is vital that eve
 pre-experiment parameter tuning be automatable.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\label{sec:notation}
 \section{Notation}
+\label{sec:notation}
 
 The rest of this paper utilizes a consistent notation for discussing various statistical and
 measured quantities related to benchmarking. We define this notation here:
@@ -309,15 +310,16 @@ measured quantities related to benchmarking. We define this notation here:
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{A model for benchmark timing distributions}
 \label{sec:model}
-\section{A better statistical interpretation of benchmark timing distributions}
 
 In this section, we present a statistical description of benchmark behavior that avoids
 problematic assumptions of normality or identical timing distributions between benchmarks.
 This model will drive the design of the experimental protocol and the hypothesis test
 that we discuss in future sections.
 
-\subsection{The underlying model for program execution}
+\subsection{The definition and execution of benchmark programs}
+\label{sec:programmodel}
 
 Consider an initial benchmarkable user program $P_0$, whose output is deterministic and
 identical for every execution of the program. For any given computer, $P_0$ can be
@@ -327,36 +329,33 @@ represented by some sequence of instructions $I^{[i]}$:
     P_0 = \left[I^{[1]}, I^{[2]}, \dots I^{[k]}\right]
 \end{equation}
 
-Each instruction $I^{[i]}$ specifies a state transition that takes the executing machine
-from an initial state to a desired output state. In an idealized universe, we could assume
-that the state transition for instruction $I^{[i]}$ takes exactly $\tau^{[i]}$ time, such
-that the total runtime of $P_0$ is $t_{P_0} = \sum_{i=1}^N \tau^{[i]}$. For the purposes of
-our model, we will pick $\left[I^{[1]}, I^{[2]}, \dots I^{[k]}\right]$ to be instructions
-that minimize $t_{P_0}$ across all possible configurations of $\tau^{[i]}$, subject to the
-semantic constraint that these instructions implement the exact behavior of $P_0$ with
-respect to the scope of $P_0$'s original definition and execution.
+We denote the runtime of instruction $I^{[i]}$ as $\tau^{[i]}$, such that the total runtime
+of $P_0$ can be written $t_{P_0} = \sum_{i=1}^N \tau^{[i]}$. Regardless of the code supplied
+by $P_0$'s original author, the computer on which $P_0$ runs is free to execute any series
+of instructions which implements the exact behavior of $P_0$ with respect to the scope of
+$P_0$'s original definition and execution. For the purposes of our model, we will define
+$\left[I^{[1]}, I^{[2]}, \dots I^{[k]}\right]$ to be a series of instructions which, if
+executed by the computer exactly, minimizes $t_{P_0}$ across all possible configurations of
+$\tau^{[i]}$.
 
 In reality, the machine and operating system executing $P_0$ are vulnerable to the factors
-described in Section~\ref{sec:variations}. These factors may cause the computer to undergo
-zero or more intermediary state transitions before achieving the state transition specified
-by instruction $I^{[i]}$. Since these factors \textit{delay} the completion of the original
-instructions, we refer to them as \textit{delay factors}\footnote{Technically, there are
-some causes of timing variations which might speed up the execution of a program, such as
-frequent scaling~\cite{RHEL6}. However, these factors number far fewer than those that slow
-down execution of a program, and as such, are more easily controlled. Thus, we only focus on
-the latter, which we believe dominates the former in most real-world settings.} We can
-account for these additional state transitions by modeling them as
-\textit{delay instructions} $D^{[i]}$, which are interleaved with $P_0$'s original
-instructions to produce a new program $P$:
+described in Section~\ref{sec:variations}. Since these factors can \textit{delay} the
+completion of the original instructions, we refer to them as \textit{delay
+factors.}\footnote{Technically, there are some external factors which might speed up program
+execution, such as frequency scaling~\cite{RHEL6}. However, these factors number far fewer
+than those that slow down program execution. Thus, we only focus on the latter, which we
+believe dominates the former in most real-world settings.} We can incorporate these delay
+factors into our original program definition by modeling them as \textit{delay instructions}
+$D^{[i]}$, which are interleaved with $P_0$'s original instructions to produce a new program
+$P$:
 
 \begin{equation}
     P = \left[I^{[1]}, D^{[1]}, I^{[2]}, D^{[2]}, \dots I^{[k]}, D^{[k]}\right]
 \end{equation}
 
 We assume that the delay instructions do not interfere with the semantics of $P_0$, such
-that $P$ and $P_0$ are characterized by an identical mapping of inputs to outputs. While
-this restriction forces $P$ and $P_0$ to share the same semantics, it does not force them
-to have the same runtime. The runtime of $P$ is
+that $P$ and $P_0$ share an identical mapping of inputs to outputs. Incorporating the delay
+instructions, the runtime of $P$ can be written as
 
 \begin{equation}
     t_P = t_{P_0} + \sum_{j} \tau^{[j]}_D
@@ -390,23 +389,24 @@ t_P &= t_{P_0} + \sum_{j} \tau^{[j]}_D \\ \nonumber
     &= t_{P_0} + \sum_{i} X_P^{(i)} \tau^{(i)}
 \end{align}
 
-Thus, we've shown that our model treats $t_P$ as a random variable whose distribution is not
-necessarily Gaussian, but rather depends on the trigger probabilities $p^{(i)[j]}$ that are
-determined by the combined behavior of the delay factors and the initial benchmark program
-$P_0$.
+In summary, our model treats $t_P$ as a random variable whose distribution depends on the
+trigger probabilities $p^{(i)[j]}$, which are determined by the combined behavior of the
+delay factors and the initial benchmark program $P_0$.
 
-\subsection{Incorporating measurement into the model}
+\subsection{The effects of repeated benchmark execution}
+\label{sec:measuremodel}
 
-The previous sections presented a model that describes theoretical program execution times,
-but said nothing about the behavior of the timing \textit{measurements} that are observed in
-experiment.
+As mentioned in Section~\ref{sec:existingtools}, experiments which measure program
+performance often incorporate multiple benchmark executions in an attempt to obtain more
+accurate measurements. We will now apply our model to demonstrate that this strategy is
+sufficient for eliminating timer error, but is not sufficient to obviate the effects of
+delay factors.
 
-As mentioned in Section~\ref{sec:intro}, a timing measurement often incorporates
-multiple benchmark executions in order to mitigate error due to timer inaccuracy. To
-simplify our analysis, we can represent $n$ executions of a program $P_0$ comprised of $k$
-instructions as a single execution of a program $Q_0$, which is the result of concatenating
-$n$ copies of $P_0$:
+To simplify our analysis, we can represent $n$ executions of a program $P_0$ comprised of
+$k$ instructions as a single execution of a program $Q_0$, which is the result of
+concatenating $n$ copies of $P_0$:
 
+\vspace{-0.35cm}
 \begin{align}
 P_0 &= \left[I^{[1]}, I^{[2]}, \dots I^{[k]} \right] \\ \nonumber
 Q_0 &= \left[P_0, P_0, \dots P_0 \right] \\ \nonumber
@@ -414,15 +414,16 @@ Q_0 &= \left[P_0, P_0, \dots P_0 \right] \\ \nonumber
     &= \left[I_{Q}^{[1]}, I_{Q}^{[2]}, \dots I_{Q}^{[nk]} \right]
 \end{align}
 
-such that instruction $I_{P}^{[i]} = I_{Q}^{[i + ck]}$ for $c \in \{0, \dots n\}$. Following
-the convention of the previous section, we use $Q$ to denote the program that results from
-interleaving $Q_0$ with delay instructions. Note that $Q$ is \textit{not} simply $n$
-repetitions of $P$, since $Q$'s delay instructions do not obey the repetition relation
-of the original instructions ($D_{P}^{[i]} \ne D_{Q}^{[i + ck]}$).
+such that instruction $I_{P}^{[i]} = I_{Q}^{[i + ck]}$ for $c \in \{0, \dots n - 1\}$.
+Following the convention of the previous section, we use $Q$ to denote the program that
+results from interleaving $Q_0$ with delay instructions. Note that $Q$ is \textit{not}
+simply $n$ repetitions of $P$, since $Q$'s delay instructions do not obey the repetition
+relation of the original instructions ($D_{P}^{[i]} \ne D_{Q}^{[i + ck]}$).
 
 An observed timing measurement $T$ of a single execution of $Q$ can be decomposed as
 follows:
 
+\vspace{-0.35cm}
 \begin{align}
     T &= t_{Q} + \epsilon \\ \nonumber
       &= t_{Q_0} + \sum_{i} X_Q^{(i)} \tau^{(i)} + \epsilon \\ \nonumber
@@ -434,6 +435,7 @@ constraint $-\tau_{\textrm{acc}} \le \epsilon \le \tau_{\textrm{acc}}$.
 
 We can obtain a naive estimate for $t_{P_0}$ by dividing $T$ by $n$:
 
+\vspace{-0.10cm}
 \begin{equation}
     \frac{T}{n} = t_{P_0} + \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)} + \epsilon}{n}
 \end{equation}
@@ -441,6 +443,7 @@ We can obtain a naive estimate for $t_{P_0}$ by dividing $T$ by $n$:
 In the limit of large $n$, $\frac{\epsilon}{n}$ goes to zero, but the behavior of the delay
 factor term is less clear:
 
+\vspace{-0.10cm}
 \begin{equation}  \label{eq:9}
     \lim_{n\to\infty} \frac{T}{n} = t_{P_0} + \lim_{n\to\infty} \frac{\sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)}}{n}
 \end{equation}
@@ -450,6 +453,7 @@ $X_Q^{(i)}$, we can derive an achievable tight upper bound on the delay factor t
 limit as $n \to \infty$ can be evaluated. Consider the worst case where all $x_Q^{(i)[j]} =
 1$, such that all $X_Q^{(i)} = nk$. The delay factor term then reduces as:
 
+\vspace{-0.35cm}
 \begin{align} \label{eq:10}
     \sum_{i} \sum_{j=1}^{nk} x_Q^{(i)[j]} \tau^{(i)} &= \sum_{i} \sum_{j=1}^{nk} \tau^{(i)} \\ \nonumber
                                                      &= nk \sum_{i} \tau^{(i)}
@@ -459,6 +463,7 @@ Plugging Eq~\ref{eq:10} into Eq~\ref{eq:9}, we see that in the worst case the de
 term can dwarf $t_{P_0}$ regardless of the number of executions of $P_0$ performed during
 the measurement:
 
+\vspace{-0.35cm}
 \begin{align} \label{eq:11}
     \lim_{n\to\infty} \frac{T}{n} &= t_{P_0} + \lim_{n\to\infty} \frac{nk \sum_{i} \tau^{(i)}}{n} \\ \nonumber
                                   &= t_{P_0} + k \sum_{i} \tau^{(i)}
@@ -471,10 +476,17 @@ the random variables $X_Q^{(i)}$, which, recalling our discussion in
 Section~\ref{sec:variations}, are not easily controlled in practice.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\label{sec:protocol}
-\section{Experimental protocol for benchmark execution}
+\section{An Automated procedure for configuring performance experiments}
+\label{sec:confexperiment}
 
-\subsection{Tuning the experiment}
+In Section~\ref{sec:measuremodel}, we found that increasing $n$, the number of benchmark
+executions per timing measurement, is not a sufficient strategy to eliminate the effects of
+delay factors on timing measurements. However, we showed that increasing $n$ can improve
+timing measurements by eliminating error due to timer inaccuracy. In this section, we
+present an experimental procedure for automatically selecting useful values of $n$ for
+a given benchmark program.
+
+\subsection{An algorithm for estimating the optimal $n$ value}
 
 Given $P_0$ (the initial benchmarkable program), $n$ (the number of executions of $P_0$ per
 timing measurement), and $\tau_{\textrm{budget}}$ (the user's time budget), an experiment
@@ -493,24 +505,28 @@ automatable procedure for guessing this value is given in Algorithm~\ref{alg:tun
 \begin{algorithm}
     \caption{estimating the optimal $n$ value}
     \label{alg:tuning}
-    \KwIn{$P_0$, $\tau_{\textrm{acc}}$, an oracle function $\nu : t \to n$}
+    \KwIn{$P_0$, $\tau_{\textrm{acc}}$, $\tau_{\textrm{prec}}$, an oracle function $\nu : t \to n$}
     \KwOut{$n$}
-    For $i \in \{1, \dots \tau_{\textrm{acc}}\}$, measure the amount of time it takes
-    to perform $i$ executions of $P_0$, resulting in a collection of timing measurements
-    $T_1, \dots T_{\tau_{\textrm{acc}}}$.
+    Let $j = \tau_{\textrm{acc}} / \tau_{\textrm{prec}}$.
 
-    Estimate $t_{P_0}$ as $\hat{t}_{P_0} = \textrm{min}(\frac{T_1}{1}, \dots \frac{T_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}})$.
+    For $i \in \{1, \dots j\}$, measure the amount of time it takes to perform $i$
+    executions of $P_0$, resulting in a collection of timing measurements $T_1, \dots T_j$.
+
+    Estimate $t_{P_0}$ as $\hat{t}_{P_0} = \textrm{min}(\frac{T_1}{1}, \dots \frac{T_j}{j})$.
 
     Evaluate $\nu(\hat{t}_{P_0})$ to obtain $n$.
 \end{algorithm}
 
-This algorithm only ever needs to be applied once per benchmark, since the optimal value of
-$n$ for a given $P_0$ can be cached for use in subsequent experiments. Thus, we consider
-this algorithm a pre-processing step that does not count against our time budget
+An extensive description of the oracle function and its purpose is provided in
+Section~\ref{sec:oracle}.
+
+Note that Algorithm~\ref{alg:tuning} only ever needs to be applied once per benchmark, since
+the estimated $n$ can be cached for use in subsequent experiments. Thus, we consider this
+algorithm an automated pre-processing step that does not count against our time budget
 $\tau_{\textrm{budget}}$.
 
-\label{sec:minimum}
 \subsection{Justifying the minimum estimator}
+\label{sec:minimum}
 
 \begin{figure}
 \centering
@@ -523,10 +539,10 @@ smoothness and asymptotic behavior of the cross-curve minima.}
 \label{fig:scaling}
 \end{figure}
 
-In our model, $\textrm{min}(\frac{T_1}{1}, \dots
-\frac{T_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}})$ is the best estimator for $t_{P_0}$
-because the minimum produces the closest estimate to $t_{P_0}$ attainable from our sample.
-Let us justify this claim.
+In our model, we choose to use the minimum estimator as opposed to the more commonly used
+median or mean estimators. We made this choice because $\textrm{min}(\frac{T_1}{1}, \dots
+\frac{T_{\tau_{\textrm{acc}}}}{\tau_{\textrm{acc}}})$ produces the closest estimate to
+$t_{P_0}$ attainable from our sample. Let us justify this claim.
 
 Consider the total error term for a given timing measurement $E_m = \frac{\left(\sum_{i}
 X_Q^{(i)} \tau^{(i)} + \epsilon \right)_m}{n_m}$, such that $\frac{T_i}{n_i} = t_{P_0} +
@@ -564,9 +580,13 @@ exhibit multimodal behavior, as can be seen in the figures.
 
 While estimators like the median and trimmed mean are known to be robust to
 outliers~\cite{Maronna2006}, Fig~\ref{fig:locationmeasures} demonstrates that they still
-capture bimodality of the distributions plotted in Fig~\ref{fig:pdfsumindex}. By contrast,
-we see that the distribution of the minimum across all experimental trials is unimodal,
-implying that the minimum is unaffected by the bimodally-distributed error terms.
+capture bimodality of the distributions plotted in Fig~\ref{fig:pdfsumindex}. Thus, these
+estimators are undesirable because our choice of $n$ could vary drastically between
+different executions of Algorithm~\ref{alg:tuning}, depending on which of the estimator's
+modes was captured in the sample.
+
+By contrast, we see that the distribution of the minimum across all experimental trials is
+unimodal, implying that the minimum is unaffected by the bimodally-distributed error terms.
 \textbf{For our model, the minimum is a unimodal, robust estimator for the location
 parameter of a given benchmark's timing distribution}.
 
@@ -584,30 +604,33 @@ for one pdf or the other.}
 
 \subsection{Justifying the $n$ range}
 
-It might not be obvious why our heuristic does not test $n > \tau_{\textrm{acc}}$. Recall
+It might not be obvious why our heuristic does not test $n > j$, where
+$j = \tau_{\textrm{acc}} / \tau_{\textrm{prec}}$. Recall
 that $-\tau_{\textrm{acc}} \le \epsilon \le \tau_{\textrm{acc}}$. For a given value of $n$,
 the timer error term in a timing estimate is $\frac{-\tau_{\textrm{acc}}}{n} \le
-\frac{\epsilon}{n} \le \frac{\tau_{\textrm{acc}}}{n}$. Thus, when $n = \tau_{\textrm{acc}}$:
+\frac{\epsilon}{n} \le \frac{\tau_{\textrm{acc}}}{n}$. Thus, when $n = j$:
 
 \begin{equation}
-\frac{-\tau_{\textrm{acc}}}{\tau_{\textrm{acc}}} \le \frac{\epsilon}{\tau_{\textrm{acc}}} \le \frac{\tau_{\textrm{acc}}}{\tau_{\textrm{acc}}} \to -1 \le \frac{\epsilon}{\tau_{\textrm{acc}}} \le 1
+\frac{-\tau_{\textrm{acc}}}{j} \le \frac{\epsilon}{j} \le \frac{\tau_{\textrm{acc}}}{j} \to -\tau_{\textrm{prec}} \le \frac{\epsilon}{\tau_{\textrm{acc}}} \le \tau_{\textrm{prec}}
 \end{equation}
 
-In other words, we do not test $n > \tau_{\textrm{acc}}$ since the error at $n \ge
-\tau_{\textrm{acc}}$ is constrained to timer precision.
+In other words, we do not test $n > j$ since the error at $n \ge j$ is constrained to timer
+precision.
 
 \subsection{The oracle function}
+\label{sec:oracle}
 
 Our heuristic takes as input an oracle function $\nu(t)$ that maps expected runtimes to an
 optimal number of executions per measurement. While Algorithm 1 does not directly describe
-$\nu(t)$, appropriate choices for this function should have the following properties:
+$\nu(t)$, appropriate choices for this function should have the following properties (once
+again setting $j = \tau_{\textrm{acc}} / \tau_{\textrm{prec}}$):
 
 \begin{itemize}
-    \item $\nu(t)$ has a discrete range $n \in \{1, \dots \tau_{\textrm{acc}}\}$
+    \item $\nu(t)$ has a discrete range $n \in \{1, \dots j\}$
     \item $\nu(t)$ is monotonically decreasing
-    \item $\frac{d\nu}{dt}|_{t \approx 1} \approx 0$
+    \item $\frac{d\nu}{dt}|_{t \approx \tau_{\textrm{prec}}} \approx 0$
     \item $\frac{d\nu}{dt}|_{t \approx \tau_{\textrm{acc}}} \approx 0$
-    \item $\nu(1) \approx \tau_{\textrm{acc}}$
+    \item $\nu(\tau_{\textrm{prec}}) \approx j$
     \item $\nu(t \ge \tau_{\textrm{acc}}) \approx 1$
 \end{itemize}
 
@@ -644,8 +667,8 @@ black curve is $Y(t)$ from Eq~\ref{eq:14} with parameters $a = 0.009$ and $b = 0
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\label{sec:hypotesting}
 \section{The difficulties of hypothesis testing and a potential way forward}
+\label{sec:hypotesting}
 
 A logical next step would be to use our model to compare the timing estimates of two
 programs - or equivalently, two different versions of the same program - and provide to the
@@ -709,23 +732,22 @@ in general, could prove a fruitful avenue of future research for the study of st
 regression detection.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\label{sec:implementation}
 \section{Implementation in Julia}
+\label{sec:implementation}
 
-The experimental methodology in this paper is implemented in the BenchmarkTools Julia
-package \footnote{\url{https://github.com/JuliaCI/BenchmarkTools.jl}}. In addition to the
-\lstinline|BaseBenchmarks| \footnote{\url{https://github.com/JuliaCI/BaseBenchmarks.jl}} and
-\lstinline|Nanosoldier| \footnote{\url{https://github.com/JuliaCI/Nanosoldier.jl}} packages,
-the \lstinline|BenchmarkTools| package implements the on-demand CI benchmarking service used
-by core Julia developers to compare the performance of proposed language changes with
-respect to over 1300 benchmarks. Since this CI benchmarking service began in early 2016, it
-has caught and prevented the introduction of dozens of serious performance regressions into
-Julia's standard library (defining a ``serious'' regression as a $30\%$ or greater increase
-in a benchmark's minimum execution time).
+The experimental methodology in this paper is implemented in the \lstinline|BenchmarkTools|
+Julia package\footnote{\url{https://github.com/JuliaCI/BenchmarkTools.jl}}. In addition to
+the \lstinline|BaseBenchmarks|\footnote{\url{https://github.com/JuliaCI/BaseBenchmarks.jl}}
+and \lstinline|Nanosoldier|\footnote{\url{https://github.com/JuliaCI/Nanosoldier.jl}}
+packages, the \lstinline|BenchmarkTools| package implements the on-demand CI benchmarking
+service used by core Julia developers to compare the performance of proposed language
+changes with respect to over 1300 benchmarks. Since this CI benchmarking service began in
+early 2016, it has caught and prevented the introduction of dozens of serious performance
+regressions into Julia's standard library (defining a ``serious'' regression as a $30\%$ or
+greater increase in a benchmark's minimum execution time).
 
 The benchmarks referenced in this paper are Julia benchmarks written and executed using
-\lstinline|BenchmarkTools\lstinline|. A brief description of each benchmark is offered
-below:
+\lstinline|BenchmarkTools|. A brief description of each benchmark is offered below:
 
 \begin{itemize}
     \item The \lstinline|sumindex(a, inds)| benchmark sums over all \lstinline|a[i]| for all
@@ -753,8 +775,8 @@ The mock benchmark suite referenced in this paper is hosted on GitHub at
 \url{https://github.com/jiahao/paper-benchmark}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\label{sec:conclusion}
 \section*{Conclusion}
+\label{sec:conclusion}
 
 In this article, we discussed how the complexities of modern hardware and software
 environments can hinder the application of traditional statistics to performance testing. We
@@ -794,12 +816,13 @@ experimental methodology. Section~\ref{sec:implementation} describes our experim
 benchmark suite in detail, and provides a link to the suite's implementation.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\label{sec:acknowledgement}
 \section*{Acknowledgment}
+\label{sec:acknowledgement}
 
 We thank the many Julia developers, in particular Andreas Noack and Steven G.
 Johnson of MIT, for many insightful discussions.
-This research was supported (in part) by the U.S. Army Research Office under
+
+This research was supported in part by the U.S. Army Research Office under
 contract W911NF-13-D-0001.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
