@@ -218,9 +218,9 @@ fit employed by \lstinline|criterion| is sensitive to outliers (though \lstinlin
 does print a warning to the user if outliers are detected)~\cite{Maronna2006}. Second,
 measurements made earlier in this experiment are highly vulnerable to timer error, since few
 benchmark repetitions are used. These early measurements can skew the regressions line, and
-in turn, the final runtime estimate. Third, measurements made later in the experiment can
-repeat the benchmark more times than is necessary to overcome timer error, constituting an
-inefficient use of experimenter time.
+in turn, skew the final runtime estimate. Third, measurements made later in the experiment
+can repeat the benchmark more times than is necessary to overcome timer error, constituting
+an inefficient use of experimenter time.
 
 One of the more promising methodologies is presented by Kalibera et al. in the paper
 ``Rigorous Benchmarking in Reasonable Time''~\cite{Kalibera2013}. Their approach is largely
