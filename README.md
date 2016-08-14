@@ -19,3 +19,12 @@ implement this strategy in the
 where it is used in production continuous integration (CI) pipelines for
 developing the Julia language and its ecosystem.
 
+## Code and data
+
+The main benchmarking code is available from the
+[BenchmarkTools](https://github.com/JuliaCI/BenchmarkTools.jl) Julia package,
+[v0.0.3](https://github.com/JuliaCI/BenchmarkTools.jl/releases/tag/v0.0.3).
+The specific code used to run these experiments and the data generated on our
+test machine is available from the
+[`experiments`](https://github.com/jiahao/paper-benchmark/tree/master/experiments)
+directory in this repository.
