@@ -206,9 +206,9 @@ regression, and hence also skew the final runtime estimate. Third, measurements 
 the experiment can repeat the benchmark more times than are necessary to overcome timer
 error, constituting an inefficient use of experiment time.
 
-Another approach focuses on repeating benchmarks enough times that the execution times of
-the iterations become i.i.d.~\cite{Kalibera2013}. Their approach is largely
-platform-agnostic, recognizes the pitfalls of inter-measurement correlations, and
+Another approach focuses on figuring out how many benchmark executions are required before
+timing measurements of the benchmark become i.i.d.~\cite{Kalibera2013}. Their approach is
+largely platform-agnostic, recognizes the pitfalls of inter-measurement correlations, and
 acknowledges that merely increasing the number of benchmark repetitions is not always a
 sufficient strategy to yield i.i.d. samples. However, the methodology focuses on mean-based
 estimators, which are sensitive to outliers. Furthermore, the authors do not report if their
