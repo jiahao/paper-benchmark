@@ -9,7 +9,8 @@ travis:
 
 arxiv: pdf
 	mkdir -p arxiv
-	cp *.pdf output/*.bbl paper.tex *.cls *.bst arxiv
+	cp -ivR figures/*/* output/*.bbl *.tex arxiv
+	echo Fix paths to images before continuing
 	#Test build
 	cd arxiv && latexmk -pdf $(MAIN) -auxdir=crap -outdir=crap && rm -rf crap
 	cd arxiv && zip arxiv.zip *
