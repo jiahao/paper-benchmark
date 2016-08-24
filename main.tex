@@ -763,10 +763,10 @@ Virtually all timing variations are delays caused by flushing cache lines, task
 switching to background OS processes, or similar events. The simple
 observation that variations never reduce the run time led us to consider a
 straightforward analysis based on a simple model for delays in a serial
-instruction pipeline. Our results suggest that using the minimum estimator for
-the true run time of a benchmark, rather than the mean or median, is robust to
-nonideal statistics and also provides the smallest error.  Our model also
-revealed some behaviors that challenge conventional wisdom: simply
+instruction pipeline. Our results suggest that the minimum, rather than
+the mean or median, is the most suitable run time estimator for determining
+the optimal number of executions per measurement for a given benchmark. Our
+model also revealed some behaviors that challenge conventional wisdom: simply
 running a benchmark for longer, or repeating its execution many times, can
 render the effects of external variation negligible, even as the error due to
 timer inaccuracy is amortized.
